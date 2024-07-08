@@ -1,0 +1,12 @@
+server:
+  port: 9090
+
+spring:
+  profiles:
+    active: dev
+
+
+logging:
+  level:
+    org:
+      hibernate: info
