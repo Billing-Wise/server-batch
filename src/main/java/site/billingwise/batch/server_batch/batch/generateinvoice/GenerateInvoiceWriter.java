@@ -16,6 +16,7 @@ import site.billingwise.batch.server_batch.domain.invoice.repository.InvoiceRepo
 import site.billingwise.batch.server_batch.domain.invoice.repository.PaymentStatusRepository;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -42,6 +43,8 @@ public class GenerateInvoiceWriter implements ItemWriter<Contract> {
 
             if (!exists) {
                 LocalDate setContractDate = LocalDate.of(yearValue, nextMonthValue, contract.getContractCycle());
+                LocalDateTime dueDate = calculateDueDate(contract, setContractDate);
+
                 Invoice invoice = Invoice.builder()
                         .contract(contract)
                         .invoiceType(contract.getInvoiceType())
@@ -49,10 +52,18 @@ public class GenerateInvoiceWriter implements ItemWriter<Contract> {
                         .paymentStatus(paymentStatusUnpaid)
                         .chargeAmount(contract.getItemPrice() * contract.getItemAmount())
                         .contractDate(setContractDate.atStartOfDay())
-                        .dueDate(contract.getIsSubscription() ? setContractDate.atStartOfDay() : setContractDate.plusDays(contract.getPaymentDueCycle()).atStartOfDay())
+                        .dueDate(dueDate)
                         .build();
                 invoiceRepository.save(invoice);
             }
+        }
+    }
+
+    private LocalDateTime calculateDueDate(Contract contract, LocalDate setContractDate) {
+        if (contract.getPaymentType().getName().equals("납부자 결제")) {
+            return setContractDate.plusDays(contract.getPaymentDueCycle()).atStartOfDay();
+        } else {
+            return setContractDate.atStartOfDay();
         }
     }
 }
