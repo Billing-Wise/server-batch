@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
+import org.springframework.batch.core.listener.JobExecutionListenerSupport;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.item.ItemWriter;
@@ -14,6 +15,7 @@ import org.springframework.batch.item.database.JpaPagingItemReader;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
+import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
 import site.billingwise.batch.server_batch.domain.contract.Contract;
 import site.billingwise.batch.server_batch.domain.invoice.repository.InvoiceRepository;
 import site.billingwise.batch.server_batch.domain.invoice.repository.PaymentStatusRepository;
@@ -24,10 +26,12 @@ public class GenerateInvoiceJobConfig {
 
     private final int CHUNK_SIZE = 100;
     private final EntityManagerFactory entityManagerFactory;
+    private final JobCompletionCheckListener jobCompletionCheckListener;
 
     @Bean
     public Job generateInvoiceJob(JobRepository jobRepository, Step generateInvoiceStep) {
         return new JobBuilder("generateInvoiceJob", jobRepository)
+                .listener(jobCompletionCheckListener)
                 .start(generateInvoiceStep)
                 .build();
     }
