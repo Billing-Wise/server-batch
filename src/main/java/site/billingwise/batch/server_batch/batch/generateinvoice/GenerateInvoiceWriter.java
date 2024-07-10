@@ -1,14 +1,9 @@
 package site.billingwise.batch.server_batch.batch.generateinvoice;
 
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.TypedQuery;
 import lombok.RequiredArgsConstructor;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import site.billingwise.batch.server_batch.domain.contract.Contract;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
 import site.billingwise.batch.server_batch.domain.invoice.PaymentStatus;
@@ -17,10 +12,8 @@ import site.billingwise.batch.server_batch.domain.invoice.repository.PaymentStat
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+
+
 @Component
 @RequiredArgsConstructor
 public class GenerateInvoiceWriter implements ItemWriter<Contract> {
@@ -62,8 +55,7 @@ public class GenerateInvoiceWriter implements ItemWriter<Contract> {
     private LocalDateTime calculateDueDate(Contract contract, LocalDate setContractDate) {
         if (contract.getPaymentType().getName().equals("납부자 결제")) {
             return setContractDate.plusDays(contract.getPaymentDueCycle()).atStartOfDay();
-        } else {
-            return setContractDate.atStartOfDay();
         }
+        return setContractDate.atStartOfDay();
     }
 }

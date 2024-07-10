@@ -13,11 +13,14 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
         format_sql: true
+      defer-datasource-initialization: false
+      datasource:
+        initialization-mode: never
 ---
 spring:
   mail:
