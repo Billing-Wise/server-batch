@@ -8,7 +8,7 @@ VALUES
 
 
 -- 결제 수단
-INSERT INTO payment_type (payment_type_id, name, basic_payment_type, is_deleted, created_at, updated_at)
+INSERT INTO payment_type (payment_type_id, name, is_basic, is_deleted, created_at, updated_at)
 VALUES
     (1, '납부자 결제', false, false, NOW(), NOW()),
     (2, '자동 이체', true, false, NOW(), NOW());

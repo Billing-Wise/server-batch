@@ -23,7 +23,7 @@ public class PaymentType extends BaseEntity {
     @Column(length = 50, nullable = false)
     private String name;
 
-    @Column(name = "basic_payment_type",nullable = false)
+    @Column(name = "is_basic",nullable = false)
     private Boolean isBasic;
 
     @OneToMany(mappedBy = "paymentType")
