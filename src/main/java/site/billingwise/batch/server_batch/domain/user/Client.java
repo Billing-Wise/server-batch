@@ -2,6 +2,7 @@ package site.billingwise.batch.server_batch.domain.user;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import site.billingwise.batch.server_batch.domain.common.BaseEntity;
 import site.billingwise.batch.server_batch.domain.item.Item;
 import site.billingwise.batch.server_batch.domain.member.Member;
@@ -11,7 +12,7 @@ import java.util.List;
 
 @Entity
 @Getter
-@Builder
+@SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Client extends BaseEntity {

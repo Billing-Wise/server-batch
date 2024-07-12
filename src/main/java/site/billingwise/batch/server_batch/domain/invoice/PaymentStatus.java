@@ -2,6 +2,7 @@ package site.billingwise.batch.server_batch.domain.invoice;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import site.billingwise.batch.server_batch.domain.common.BaseEntity;
 
 import java.util.ArrayList;
@@ -9,7 +10,7 @@ import java.util.List;
 
 @Entity
 @Getter
-@Builder
+@SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class PaymentStatus extends BaseEntity {

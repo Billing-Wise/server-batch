@@ -2,6 +2,7 @@ package site.billingwise.batch.server_batch.domain.contract;
 
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.experimental.SuperBuilder;
 import site.billingwise.batch.server_batch.domain.common.BaseEntity;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
 
@@ -10,7 +11,7 @@ import java.util.List;
 
 @Entity
 @Getter
-@Builder
+@SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class PaymentType extends BaseEntity {
@@ -23,7 +24,7 @@ public class PaymentType extends BaseEntity {
     @Column(length = 50, nullable = false)
     private String name;
 
-    @Column(name = "basic_payment_type",nullable = false)
+    @Column(name = "is_basic",nullable = false)
     private Boolean isBasic;
 
     @OneToMany(mappedBy = "paymentType")

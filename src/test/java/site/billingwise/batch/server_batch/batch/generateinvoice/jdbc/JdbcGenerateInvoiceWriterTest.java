@@ -16,6 +16,7 @@ import site.billingwise.batch.server_batch.domain.contract.PaymentType;
 import site.billingwise.batch.server_batch.domain.invoice.InvoiceType;
 import site.billingwise.batch.server_batch.domain.invoice.PaymentStatus;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 
@@ -64,6 +65,9 @@ class JdbcGenerateInvoiceWriterTest {
                 .itemAmount(2)
                 .paymentType(paymentType)
                 .invoiceType(autoInvoiceType)
+                .isDeleted(false)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         List<Contract> contracts = Arrays.asList(contract);
