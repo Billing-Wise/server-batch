@@ -38,6 +38,11 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
         List<Invoice> invoices = new ArrayList<>();
 
         for(Contract contract : chunk) {
+
+            if(contract.getIsDeleted()){
+                continue;
+            }
+
             // 수동 청구가 이미 만들어지면, 청구 생성 X
             if(!invoiceExists(contract, nextMonthValue, yearValue)){
                 // 약정일
@@ -53,6 +58,9 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
                         .chargeAmount(contract.getItemPrice() * contract.getItemAmount())
                         .contractDate(setInvoiceDate)
                         .dueDate(payDueDate)
+                        .isDeleted(false)  // isDeleted 필드 값을 설정
+                        .createdAt(now)  // createdAt 필드 값을 설정
+                        .updatedAt(now)  // updatedAt 필드 값을 설정
                         .build();
 
                 invoices.add(invoice);

@@ -52,7 +52,7 @@ public class JdbcGenerateInvoiceJobConfig {
         return new JdbcCursorItemReaderBuilder<Contract>()
                 .name("jdbcContractItemReader")
                 .fetchSize(CHUNK_SIZE)
-                .sql("select c.*, pt.payment_type_id, pt.name as payment_type_name, it.invoice_type_id, it.name as invoice_type_name " +
+                .sql("select c.*, pt.payment_type_id, pt.name as payment_type_name, it.invoice_type_id, it.name as invoice_type_name, c.is_deleted " +
                         "from contract c " +
                         "join contract_status cs ON c.contract_status_id = cs.contract_status_id " +
                         "join payment_type pt ON c.payment_type_id = pt.payment_type_id " +

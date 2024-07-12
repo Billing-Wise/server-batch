@@ -17,6 +17,7 @@ public class JdbcContractRowMapper implements RowMapper<Contract> {
                 .itemAmount(rs.getInt("item_amount"))
                 .contractCycle(rs.getInt("contract_cycle"))
                 .paymentDueCycle(rs.getInt("payment_due_cycle"))
+                .isDeleted(rs.getBoolean("is_deleted"))
                 .paymentType(
                         PaymentType.builder()
                                 .id(rs.getLong("payment_type_id"))
@@ -29,7 +30,9 @@ public class JdbcContractRowMapper implements RowMapper<Contract> {
                                 .name(rs.getString("invoice_type_name"))
                                 .build()
                 )
-
+                .createdAt(rs.getTimestamp("created_at").toLocalDateTime())
+                .updatedAt(rs.getTimestamp("updated_at").toLocalDateTime())
+                .isDeleted(rs.getBoolean("is_deleted"))
                 .build();
     }
 }
