@@ -7,6 +7,7 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.tasklet.Tasklet;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
@@ -15,6 +16,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import site.billingwise.batch.server_batch.batch.invoiceprocessing.rowmapper.InvoiceRowMapper;
+import site.billingwise.batch.server_batch.batch.invoiceprocessing.tasklet.CustomUpdateOverdueInvoicesTasklet;
 import site.billingwise.batch.server_batch.batch.invoiceprocessing.writer.InvoiceSendingAndPaymentManageWriter;
 import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
 import site.billingwise.batch.server_batch.batch.service.EmailService;
@@ -35,11 +37,11 @@ public class InvoiceProcessingJobConfig {
 
     // 결제 기한 체크 로직 step 아직 개발 x
     @Bean
-    public Job invoiceProcessingJob(JobRepository jobRepository, Step invoiceSendingAndPaymentManageStep) {
+    public Job invoiceProcessingJob(JobRepository jobRepository, Step invoiceSendingAndPaymentManageStep, Step invoiceDueDateUpdateStep) {
         return new JobBuilder("InvoiceProcessingJob", jobRepository)
                 .listener(jobCompletionCheckListener)
                 .start(invoiceSendingAndPaymentManageStep)
-//                .next(invoiceDueDateUpdateStep)
+                .next(invoiceDueDateUpdateStep)
                 .build();
     }
 
@@ -51,6 +53,19 @@ public class InvoiceProcessingJobConfig {
                 .writer(invoiceSendingAndPaymentManageWriter())
                 .build();
     }
+
+    @Bean
+    public Step invoiceDueDateUpdateStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+        return new StepBuilder("invoiceDueDateUpdateStep", jobRepository)
+                .tasklet(updateOverdueInvoicesTasklet(), transactionManager)
+                .build();
+    }
+
+    @Bean
+    public Tasklet updateOverdueInvoicesTasklet() {
+        return new CustomUpdateOverdueInvoicesTasklet(jdbcTemplate);
+    }
+
 
     private ItemReader<? extends Invoice> invoiceSendingAndPaymentManageReader() {
 
