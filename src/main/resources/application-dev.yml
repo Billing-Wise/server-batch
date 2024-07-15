@@ -31,9 +31,10 @@ spring:
     properties:
       mail:
         smtp:
+          auth: true
           starttls:
             enable: true
-          auth: true
+
 ---
 spring:
   batch:
