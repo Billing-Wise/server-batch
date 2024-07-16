@@ -17,13 +17,16 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import static site.billingwise.batch.server_batch.batch.util.StatusConstants.INVOICE_TYPE_MANUAL_BILLING;
+import static site.billingwise.batch.server_batch.batch.util.StatusConstants.PAYMENT_TYPE_PAYER_PAYMENT;
+
 
 @Component
 @RequiredArgsConstructor
 public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
 
     private final JdbcTemplate jdbcTemplate;
-    private static final String PAYER_PAYMENT = "납부자 결제";
+
 
     @Override
     public void write(Chunk<? extends Contract> chunk) throws Exception {
@@ -33,17 +36,23 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
         int nextMonthValue = nextMonth.getMonthValue();
         int yearValue = nextMonth.getYear();
 
-        PaymentStatus unpaidPaymentStatus = findUnpaidPaymentStatus();
+        PaymentStatus pendingPaymentStatus = findPendingPaymentStatus();
 
         List<Invoice> invoices = new ArrayList<>();
 
+
         for(Contract contract : chunk) {
+            // 수동 청구면 pass(애초에 계약이 수동 청구인 경우)
+            if(INVOICE_TYPE_MANUAL_BILLING == contract.getInvoiceType().getId()) {
+                continue;
+            }
 
             if(contract.getIsDeleted()){
                 continue;
             }
 
-            // 수동 청구가 이미 만들어지면, 청구 생성 X
+
+            // 청구가 이미 만들어져 있으면, pass( 원래는 자동 청구인데, 단발성으로 청구를 생성한 경우 )
             if(!invoiceExists(contract, nextMonthValue, yearValue)){
                 // 약정일
                 LocalDateTime setInvoiceDate = LocalDateTime.of(yearValue, nextMonthValue, contract.getContractCycle(), 0, 0);
@@ -54,17 +63,16 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
                         .contract(contract)
                         .invoiceType(contract.getInvoiceType())
                         .paymentType(contract.getPaymentType())
-                        .paymentStatus(unpaidPaymentStatus)
+                        .paymentStatus(pendingPaymentStatus)
                         .chargeAmount(contract.getItemPrice() * contract.getItemAmount())
                         .contractDate(setInvoiceDate)
                         .dueDate(payDueDate)
-                        .isDeleted(false)  // isDeleted 필드 값을 설정
-                        .createdAt(now)  // createdAt 필드 값을 설정
-                        .updatedAt(now)  // updatedAt 필드 값을 설정
+                        .isDeleted(false)
+                        .createdAt(now)
+                        .updatedAt(now)
                         .build();
 
                 invoices.add(invoice);
-
 
             }
         }
@@ -99,25 +107,23 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
         });
     }
 
-    private PaymentStatus findUnpaidPaymentStatus() {
-        String sql = "select payment_status_id, name from payment_status where name = '미납'";
+    private PaymentStatus findPendingPaymentStatus() {
+        String sql = "select payment_status_id, name from payment_status where name = '대기'";
         return jdbcTemplate.queryForObject(sql, (ResultSet rs, int rowNum) ->
                 PaymentStatus.builder()
                         .id(rs.getLong("payment_status_id"))
-                        .name(rs.getString("name"))
-                        .build()
-        );
+                        .build());
     }
 
     private LocalDateTime calculateDueDate(Contract contract, LocalDateTime setInvoiceDate) {
-        if (PAYER_PAYMENT.equals(contract.getPaymentType().getName())) {
+        if (PAYMENT_TYPE_PAYER_PAYMENT == contract.getPaymentType().getId()) {
             return setInvoiceDate.plusDays(3);
         }
         return setInvoiceDate;
     }
 
     private boolean invoiceExists(Contract contract, int month, int year) {
-        LocalDateTime startDate = LocalDateTime.of(year, month, 1, 0, 0);
+        LocalDateTime startDate = LocalDateTime.of(year, month, 1, 0, 0,0);
         LocalDateTime endDate = startDate.plusMonths(1).minusSeconds(1);
 
         String sql = "select count(*) from invoice where contract_id = ? " +
