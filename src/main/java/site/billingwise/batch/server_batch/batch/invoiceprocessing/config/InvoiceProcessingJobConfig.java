@@ -72,7 +72,7 @@ public class InvoiceProcessingJobConfig {
         return new JdbcCursorItemReaderBuilder<Invoice>()
                 .name("invoiceSendingAndPaymentManageReader")
                 .fetchSize(CHUNK_SIZE)
-                .sql("select i.*, c.member_id, m.email, m.name, ca.number, ca.bank, ca.owner, i.is_deleted " +
+                .sql("select i.*, c.member_id, m.email, m.name, m.phone, ca.number, ca.bank, ca.owner, i.is_deleted, c.is_subscription " +
                         "from invoice i " +
                         "join contract c ON i.contract_id = c.contract_id " +
                         "join member m ON c.member_id = m.member_id " +

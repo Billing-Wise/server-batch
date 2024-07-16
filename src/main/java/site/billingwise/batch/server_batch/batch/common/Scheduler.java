@@ -48,39 +48,16 @@ public class Scheduler {
 //        }
 //    }
 //
-    // 15, 45초마다 실행
-    @Scheduled(cron = "15,45 * * * * ?")
-    public void jdbcGenerateInvoice() {
-        JobParameters jobParameters = new JobParametersBuilder()
-                .addLong("jdbcInvoice", System.currentTimeMillis())
-                .toJobParameters();
-        try {
-            log.info("JDBC 배치 프로그램 실행 시작");
-            jobLauncher.run(jdbcGenerateInvoiceJob, jobParameters);
-            log.info("JDBC 배치 프로그램 실행 완료");
-        } catch (JobExecutionAlreadyRunningException e) {
-            log.error("JobExecutionAlreadyRunningException 발생: ", e);
-        } catch (JobRestartException e) {
-            log.error("JobRestartException 발생: ", e);
-        } catch (JobInstanceAlreadyCompleteException e) {
-            log.error("JobInstanceAlreadyCompleteException 발생: ", e);
-        } catch (JobParametersInvalidException e) {
-            log.error("JobParametersInvalidException 발생: ", e);
-        } catch (Exception e) {
-            log.error("예기치 않은 오류 발생: ", e);
-        }
-    }
-
 //    // 15, 45초마다 실행
 //    @Scheduled(cron = "15,45 * * * * ?")
-//    public void runInvoiceProcessingJob() {
+//    public void jdbcGenerateInvoice() {
 //        JobParameters jobParameters = new JobParametersBuilder()
-//                .addLong("InvoiceProcessingJob", System.currentTimeMillis())
+//                .addLong("jdbcInvoice", System.currentTimeMillis())
 //                .toJobParameters();
 //        try {
-//            log.info("Invoice Processing Job 실행 시작");
-//            jobLauncher.run(invoiceProcessingJob, jobParameters);
-//            log.info("Invoice Processing Job 실행 완료");
+//            log.info("JDBC 배치 프로그램 실행 시작");
+//            jobLauncher.run(jdbcGenerateInvoiceJob, jobParameters);
+//            log.info("JDBC 배치 프로그램 실행 완료");
 //        } catch (JobExecutionAlreadyRunningException e) {
 //            log.error("JobExecutionAlreadyRunningException 발생: ", e);
 //        } catch (JobRestartException e) {
@@ -93,5 +70,28 @@ public class Scheduler {
 //            log.error("예기치 않은 오류 발생: ", e);
 //        }
 //    }
+
+    // 15, 45초마다 실행
+    @Scheduled(cron = "15,45 * * * * ?")
+    public void runInvoiceProcessingJob() {
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addLong("InvoiceProcessingJob", System.currentTimeMillis())
+                .toJobParameters();
+        try {
+            log.info("Invoice Processing Job 실행 시작");
+            jobLauncher.run(invoiceProcessingJob, jobParameters);
+            log.info("Invoice Processing Job 실행 완료");
+        } catch (JobExecutionAlreadyRunningException e) {
+            log.error("JobExecutionAlreadyRunningException 발생: ", e);
+        } catch (JobRestartException e) {
+            log.error("JobRestartException 발생: ", e);
+        } catch (JobInstanceAlreadyCompleteException e) {
+            log.error("JobInstanceAlreadyCompleteException 발생: ", e);
+        } catch (JobParametersInvalidException e) {
+            log.error("JobParametersInvalidException 발생: ", e);
+        } catch (Exception e) {
+            log.error("예기치 않은 오류 발생: ", e);
+        }
+    }
 }
 

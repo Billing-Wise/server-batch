@@ -4,6 +4,7 @@ import org.springframework.jdbc.core.RowMapper;
 import site.billingwise.batch.server_batch.domain.contract.Contract;
 import site.billingwise.batch.server_batch.domain.contract.PaymentType;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
+import site.billingwise.batch.server_batch.domain.invoice.InvoiceType;
 import site.billingwise.batch.server_batch.domain.member.ConsentAccount;
 import site.billingwise.batch.server_batch.domain.member.Member;
 
@@ -15,6 +16,9 @@ public class InvoiceRowMapper implements RowMapper<Invoice> {
     @Override
     public Invoice mapRow(ResultSet rs, int rowNum) throws SQLException {
 
+        InvoiceType invoiceType = InvoiceType.builder()
+                .id(rs.getLong("invoice_type_id"))
+                .build();
 
         ConsentAccount consentAccount = ConsentAccount.builder()
                 .number(rs.getString("number"))
@@ -27,12 +31,16 @@ public class InvoiceRowMapper implements RowMapper<Invoice> {
                 .id(rs.getLong("member_id"))
                 .email(rs.getString("email"))
                 .name(rs.getString("name"))
+                .phone(rs.getString("phone"))
                 .consentAccount(consentAccount)
                 .build();
 
 
         Contract contract = Contract.builder()
+                .id(rs.getLong("contract_id"))
                 .member(member)
+                .invoiceType(invoiceType)
+                .isSubscription(rs.getBoolean("is_subscription"))
                 .build();
 
         PaymentType paymentType = PaymentType.builder()
