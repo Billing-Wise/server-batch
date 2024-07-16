@@ -7,9 +7,11 @@ import org.springframework.batch.item.ItemWriter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import site.billingwise.batch.server_batch.batch.service.EmailService;
+import site.billingwise.batch.server_batch.batch.service.SmsService;
 import site.billingwise.batch.server_batch.domain.contract.Contract;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
 import site.billingwise.batch.server_batch.domain.member.ConsentAccount;
+import site.billingwise.batch.server_batch.domain.member.Member;
 
 import static site.billingwise.batch.server_batch.batch.util.StatusConstants.*;
 
@@ -20,6 +22,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
 
     private final JdbcTemplate jdbcTemplate;
     private final EmailService emailService;
+    private final SmsService smsService;
 
     @Override
     public void write(Chunk<? extends Invoice> chunk) {
@@ -33,6 +36,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
             Contract contract = invoice.getContract();
             boolean checkSubscription = contract.getIsSubscription();
             long contract_id =  contract.getId();
+            Member member = contract.getMember();
             // 자동 이체
             if(invoice.getPaymentType().getId() == PAYMENT_TYPE_AUTOMATIC_TRANSFER) {
 
@@ -50,6 +54,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
                     updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_COMPLETED);
                     insertPaymentRecord(invoice, consentAccount);
                     emailService.sendPaymentSuccessMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount);
+                    smsService.sendSuccessBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
                     // 단건일 경우( 계약 종료로 변경 )
                     if(!checkSubscription) {
                         updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);
@@ -60,6 +65,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
 
                     emailService.sendPaymentFailMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount);
                     updateFailPaymentStatus(invoice.getId());
+                    smsService.sendFailBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
                     // 단건일 경우( 계약 종료로 변경 )
                     if(!checkSubscription) {
                         updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);
@@ -71,6 +77,8 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
 
                 emailService.sendInvoiceMail(invoice.getContract().getMember().getEmail(), invoice);
                 updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_PENDING);
+                smsService.sendInvoice(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
+
                 // 단건일 경우( 계약 종료로 변경 )
                 if(!checkSubscription) {
                     updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);

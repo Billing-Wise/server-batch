@@ -20,6 +20,7 @@ import site.billingwise.batch.server_batch.batch.invoiceprocessing.tasklet.Custo
 import site.billingwise.batch.server_batch.batch.invoiceprocessing.writer.InvoiceSendingAndPaymentManageWriter;
 import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
 import site.billingwise.batch.server_batch.batch.service.EmailService;
+import site.billingwise.batch.server_batch.batch.service.SmsService;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
 
 import javax.sql.DataSource;
@@ -34,6 +35,7 @@ public class InvoiceProcessingJobConfig {
     private final JdbcTemplate jdbcTemplate;
     private final JobCompletionCheckListener jobCompletionCheckListener;
     private final EmailService emailService;
+    private final SmsService smsService;
 
     // 결제 기한 체크 로직 step 아직 개발 x
     @Bean
@@ -84,6 +86,6 @@ public class InvoiceProcessingJobConfig {
     }
 
     private ItemWriter<? super Invoice> invoiceSendingAndPaymentManageWriter() {
-        return new InvoiceSendingAndPaymentManageWriter(jdbcTemplate, emailService);
+        return new InvoiceSendingAndPaymentManageWriter(jdbcTemplate, emailService, smsService);
     }
 }

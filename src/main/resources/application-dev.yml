@@ -40,3 +40,10 @@ spring:
   batch:
     job:
       enabled: false
+
+---
+coolsms:
+  api:
+    key: "NCSLLWQSPGK4Z8KX"
+    secret: "O0F2MXPETVI0AIT0ZTPEG0Z1KWSLJV5P"
+    url: https://api.coolsms.co.kr
