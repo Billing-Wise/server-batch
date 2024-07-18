@@ -12,6 +12,8 @@ import site.billingwise.batch.server_batch.domain.contract.Contract;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
 import site.billingwise.batch.server_batch.domain.member.ConsentAccount;
 import site.billingwise.batch.server_batch.domain.member.Member;
+import site.billingwise.batch.server_batch.feign.PayClient;
+import site.billingwise.batch.server_batch.feign.PayClientResponse;
 
 import static site.billingwise.batch.server_batch.batch.util.StatusConstants.*;
 
@@ -23,6 +25,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
     private final JdbcTemplate jdbcTemplate;
     private final EmailService emailService;
     private final SmsService smsService;
+    private final PayClient payClient;
 
     @Override
     public void write(Chunk<? extends Invoice> chunk) {
@@ -30,6 +33,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
         for(Invoice invoice : chunk) {
 
             if(invoice.getIsDeleted()) {
+                log.info("삭제된 invoice 데이터 ID: {}", invoice.getId());
                 continue;
             }
 
@@ -37,6 +41,8 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
             boolean checkSubscription = contract.getIsSubscription();
             long contract_id =  contract.getId();
             Member member = contract.getMember();
+
+            log.info("Processing invoice ID: {}, Contract ID: {}, Member ID: {}", invoice.getId(), contract_id, member.getId());
             // 자동 이체
             if(invoice.getPaymentType().getId() == PAYMENT_TYPE_AUTOMATIC_TRANSFER) {
 
@@ -44,13 +50,17 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
                 boolean paymentAttempt = false;
 
                 if (consentAccount != null) {
-                    // 결제 시도( 아직 개발되지 않았음 )
-                    paymentAttempt = processAutoPayment(invoice);
+
+                    log.info("자동 결제 시도 invoice ID: {}, Account Number: {}", invoice.getId(), consentAccount.getNumber());
+                    paymentAttempt = processAutoPayment(invoice,consentAccount);
+
+                } else {
+                    log.info("자동 결제 시도 안하는 invoice ID: {}", invoice.getId());
                 }
 
-                // 결제 성공 시
-                if (paymentAttempt) {
 
+                if (paymentAttempt) {
+                    log.info("결제 성공한 invoice ID: {}", invoice.getId());
                     updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_COMPLETED);
                     insertPaymentRecord(invoice, consentAccount);
                     emailService.sendPaymentSuccessMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount);
@@ -62,7 +72,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
 
                     // 결제 실패 시
                 } else {
-
+                    log.info("결제 실패한 invoice ID: {}", invoice.getId());
                     emailService.sendPaymentFailMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount);
                     updateFailPaymentStatus(invoice.getId());
                     smsService.sendFailBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
@@ -74,7 +84,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
 
                 // 납부자 결제
             } else if(invoice.getPaymentType().getId() == PAYMENT_TYPE_PAYER_PAYMENT){
-
+                log.info("납부자 결제  invoice ID: {}", invoice.getId());
                 emailService.sendInvoiceMail(invoice.getContract().getMember().getEmail(), invoice);
                 updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_PENDING);
                 smsService.sendInvoice(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
@@ -119,9 +129,17 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
     }
 
     //결제 시도
-    private boolean processAutoPayment(Invoice invoice) {
-        // 결제 시도 로직을 들어갈 곳
+    private boolean processAutoPayment(Invoice invoice, ConsentAccount consentAccount) {
 
-        return true;
+        String type = new String();
+        if(invoice.getPaymentType().getId() == PAYMENT_TYPE_AUTOMATIC_TRANSFER) {
+            type = "account";
+        }
+        String number = consentAccount.getNumber();
+        PayClientResponse response = payClient.pay(type, number);
+
+        log.info("결제 시도 세부 내역 invoice ID: {}, Response status: {}", invoice.getId(), response.getStatusCode());
+
+        return response.getStatusCode() == 200;
     }
 }
