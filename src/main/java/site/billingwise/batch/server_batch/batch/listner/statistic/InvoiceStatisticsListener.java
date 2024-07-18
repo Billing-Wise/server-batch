@@ -36,7 +36,7 @@ public abstract class InvoiceStatisticsListener implements StepExecutionListener
         // 통계 타입에 따라 시작 날짜와 기간 번호를 설정하기
         if (getStatisticsType() == StatusConstants.STATISTICS_TYPE_MONTHLY) {
             startOfPeriod = today.minusMonths(1).withDayOfMonth(1);
-            periodNumber = startOfPeriod.getMonthValue();
+            periodNumber = 0; // 월간일 경우에는 주간 데이터 0
         } else {
             startOfPeriod = today.minusWeeks(1).with(DayOfWeek.MONDAY);
             periodNumber = startOfPeriod.get(WeekFields.of(Locale.getDefault()).weekOfWeekBasedYear());
