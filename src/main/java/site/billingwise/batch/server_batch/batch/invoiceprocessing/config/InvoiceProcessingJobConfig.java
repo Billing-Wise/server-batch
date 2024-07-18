@@ -1,5 +1,6 @@
 package site.billingwise.batch.server_batch.batch.invoiceprocessing.config;
 
+import feign.Client;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -22,6 +23,7 @@ import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListe
 import site.billingwise.batch.server_batch.batch.service.EmailService;
 import site.billingwise.batch.server_batch.batch.service.SmsService;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
+import site.billingwise.batch.server_batch.feign.PayClient;
 
 import javax.sql.DataSource;
 
@@ -36,6 +38,7 @@ public class InvoiceProcessingJobConfig {
     private final JobCompletionCheckListener jobCompletionCheckListener;
     private final EmailService emailService;
     private final SmsService smsService;
+    private final PayClient payClient;
 
     @Bean
     public Job invoiceProcessingJob(JobRepository jobRepository, Step invoiceSendingAndPaymentManageStep, Step invoiceDueDateUpdateStep) {
@@ -85,6 +88,6 @@ public class InvoiceProcessingJobConfig {
     }
 
     private ItemWriter<? super Invoice> invoiceSendingAndPaymentManageWriter() {
-        return new InvoiceSendingAndPaymentManageWriter(jdbcTemplate, emailService, smsService);
+        return new InvoiceSendingAndPaymentManageWriter(jdbcTemplate, emailService, smsService, payClient);
     }
 }
