@@ -5,7 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
-import site.billingwise.batch.server_batch.batch.listner.statistic.WeeklyInvoiceStatisticsListener;
+import site.billingwise.batch.server_batch.batch.listner.statistic.MonthlyInvoiceStatisticsListener;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
 
 import static site.billingwise.batch.server_batch.batch.util.StatusConstants.*;
@@ -13,21 +13,19 @@ import static site.billingwise.batch.server_batch.batch.util.StatusConstants.*;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class CustomWeeklyInvoiceWriter implements ItemWriter<Invoice> {
+public class CustomMonthlyInvoiceWriter implements ItemWriter<Invoice> {
 
-    private final WeeklyInvoiceStatisticsListener invoiceStatisticsListener;
+    private final MonthlyInvoiceStatisticsListener invoiceStatisticsListener;
 
     @Override
     public void write(Chunk<? extends Invoice> chunk)  {
         for (Invoice invoice : chunk) {
 
-
             if (invoiceStatisticsListener.getClientId() == null) {
                 invoiceStatisticsListener.setClientId(invoice.getContract().getMember().getClient().getId());
             }
 
-
-            log.info("주간 통계 invoice 데이터 ID: {}", invoice.getId());
+            log.info("월간 통계 invoice 데이터 ID: {}", invoice.getId());
 
             if (invoice.getIsDeleted()) {
                 log.info("삭제된 invoice 데이터, skipping: {}", invoice.getId());
