@@ -20,4 +20,10 @@ public class StatusConstants {
     public static final long PAYMENT_TYPE_PAYER_PAYMENT = 1L;   // 납부자 결제
     public static final long PAYMENT_TYPE_AUTOMATIC_TRANSFER = 2L;   // 자동 이체
 
+
+    // 통계 타입
+    public static final long STATISTICS_TYPE_WEEKLY = 1L; // 주간 통계
+    public static final long STATISTICS_TYPE_MONTHLY = 2L; // 월간 통계
+
+
 }

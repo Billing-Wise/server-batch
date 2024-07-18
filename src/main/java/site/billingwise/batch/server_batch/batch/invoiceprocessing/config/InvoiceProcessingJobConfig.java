@@ -37,7 +37,6 @@ public class InvoiceProcessingJobConfig {
     private final EmailService emailService;
     private final SmsService smsService;
 
-    // 결제 기한 체크 로직 step 아직 개발 x
     @Bean
     public Job invoiceProcessingJob(JobRepository jobRepository, Step invoiceSendingAndPaymentManageStep, Step invoiceDueDateUpdateStep) {
         return new JobBuilder("InvoiceProcessingJob", jobRepository)
