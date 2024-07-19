@@ -53,6 +53,10 @@ public abstract class InvoiceStatisticsListener implements StepExecutionListener
         log.info("업데이트 invoice statistics 테이블: totalInvoicedMoney={}, totalCollectedMoney={}, totalOutstanding={}, startOfLastWeek={}, weekNumber={}",
                 totalInvoicedMoney, totalCollectedMoney, totalOutstanding, startOfPeriod, periodNumber);
 
+        // 데이터 없을 시 에러 방지 ( 제약 조건 )
+        if (clientId == null) {
+            clientId = -1L;
+        }
 
         String sql = "insert into invoice_statistics (reference_date, total_invoiced, total_collected, outstanding, type_id, year, month, week, client_id, is_deleted, created_at, updated_at ) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, false, now(), now())";

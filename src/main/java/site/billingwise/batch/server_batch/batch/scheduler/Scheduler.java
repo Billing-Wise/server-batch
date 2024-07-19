@@ -27,8 +27,8 @@ public class Scheduler {
     private final Job weeklyInvoiceStatisticsJob;
     private final Job monthlyInvoiceStatisticsJob;
 
-//
-//    // 0, 30초마다 실행
+//    0, 30초마다 실행
+//    청구 생성 (jpa)
 //    @Scheduled(cron = "0,30 * * * * ?")
 //    public void generateInvoice() {
 //        JobParameters jobParameters = new JobParametersBuilder()
@@ -50,32 +50,38 @@ public class Scheduler {
 //            log.error("예기치 않은 오류 발생: ", e);
 //        }
 //    }
-//
-//    // 15, 45초마다 실행
-//    @Scheduled(cron = "15,45 * * * * ?")
-//    public void jdbcGenerateInvoice() {
-//        JobParameters jobParameters = new JobParametersBuilder()
-//                .addLong("jdbcInvoice", System.currentTimeMillis())
-//                .toJobParameters();
-//        try {
-//            log.info("JDBC 배치 프로그램 실행 시작");
-//            jobLauncher.run(jdbcGenerateInvoiceJob, jobParameters);
-//            log.info("JDBC 배치 프로그램 실행 완료");
-//        } catch (JobExecutionAlreadyRunningException e) {
-//            log.error("JobExecutionAlreadyRunningException 발생: ", e);
-//        } catch (JobRestartException e) {
-//            log.error("JobRestartException 발생: ", e);
-//        } catch (JobInstanceAlreadyCompleteException e) {
-//            log.error("JobInstanceAlreadyCompleteException 발생: ", e);
-//        } catch (JobParametersInvalidException e) {
-//            log.error("JobParametersInvalidException 발생: ", e);
-//        } catch (Exception e) {
-//            log.error("예기치 않은 오류 발생: ", e);
-//        }
-//    }
-//
-//  15, 45초마다 실행monthlyInvoiceStatisticsJob
-    @Scheduled(cron = "15,45 * * * * ?")
+
+    //   청구 생성 잡
+//   15, 45초마다 실행( 테스트 용 )
+//   @Scheduled(cron = "15,45 * * * * ?")
+    // 매달 말일 새벽 3시에 작동
+    @Scheduled(cron = "0 0 3 L * ?")
+    public void jdbcGenerateInvoice() {
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addLong("jdbcInvoice", System.currentTimeMillis())
+                .toJobParameters();
+        try {
+            log.info("JDBC 배치 프로그램 실행 시작");
+            jobLauncher.run(jdbcGenerateInvoiceJob, jobParameters);
+            log.info("JDBC 배치 프로그램 실행 완료");
+        } catch (JobExecutionAlreadyRunningException e) {
+            log.error("JobExecutionAlreadyRunningException 발생: ", e);
+        } catch (JobRestartException e) {
+            log.error("JobRestartException 발생: ", e);
+        } catch (JobInstanceAlreadyCompleteException e) {
+            log.error("JobInstanceAlreadyCompleteException 발생: ", e);
+        } catch (JobParametersInvalidException e) {
+            log.error("JobParametersInvalidException 발생: ", e);
+        } catch (Exception e) {
+            log.error("예기치 않은 오류 발생: ", e);
+        }
+    }
+
+    //  결제 처리 및 결제 기한(Due_date) 지난 납부자 결제 처리 잡
+//  15, 45초마다 실행( 테스트용 )
+//  @Scheduled(cron = "15,45 * * * * ?")
+    // 매일 새벽 1시에 작동
+    @Scheduled(cron = "0 0 1 * * ?")
     public void runInvoiceProcessingJob() {
         JobParameters jobParameters = new JobParametersBuilder()
                 .addLong("InvoiceProcessingJob", System.currentTimeMillis())
@@ -97,55 +103,59 @@ public class Scheduler {
         }
     }
 
-//
-//    //        @Scheduled(cron = "0 0 1 * * SUN") // 매주 일요일 새벽 1시에 실행
-//    @Scheduled(cron = "15,45 * * * * ?")
-//    public void weeklyJob() {
-//        JobParameters jobParameters = new JobParametersBuilder()
-//                .addLong("weeklyInvoiceStatisticsJob", System.currentTimeMillis())
-//                .toJobParameters();
-//        try {
-//            log.info("weeklyInvoiceStatisticsJob 실행 시작");
-//            jobLauncher.run(weeklyInvoiceStatisticsJob, jobParameters);
-//            log.info("weeklyInvoiceStatisticsJob 실행 완료");
-//        } catch (JobExecutionAlreadyRunningException e) {
-//            log.error("JobExecutionAlreadyRunningException 발생: ", e);
-//        } catch (JobRestartException e) {
-//            log.error("JobRestartException 발생: ", e);
-//        } catch (JobInstanceAlreadyCompleteException e) {
-//            log.error("JobInstanceAlreadyCompleteException 발생: ", e);
-//        } catch (JobParametersInvalidException e) {
-//            log.error("JobParametersInvalidException 발생: ", e);
-//        } catch (Exception e) {
-//            log.error("예기치 않은 오류 발생: ", e);
-//        }
-//    }
-//
-////        @Scheduled(cron = "0 0 1 1 * ?") // 매월 1일 새벽 1시
-//        @Scheduled(cron = "0,30 * * * * ?")
-//        public void monthlyJob() {
-//            JobParameters jobParameters = new JobParametersBuilder()
-//                    .addLong("monthlyInvoiceStatisticsJob", System.currentTimeMillis())
-//                    .toJobParameters();
-//            try {
-//                log.info("monthlyInvoiceStatisticsJob 실행 시작");
-//                jobLauncher.run(monthlyInvoiceStatisticsJob, jobParameters);
-//                log.info("monthlyInvoiceStatisticsJob 실행 완료");
-//            } catch (JobExecutionAlreadyRunningException e) {
-//                log.error("JobExecutionAlreadyRunningException 발생: ", e);
-//            } catch (JobRestartException e) {
-//                log.error("JobRestartException 발생: ", e);
-//            } catch (JobInstanceAlreadyCompleteException e) {
-//                log.error("JobInstanceAlreadyCompleteException 발생: ", e);
-//            } catch (JobParametersInvalidException e) {
-//                log.error("JobParametersInvalidException 발생: ", e);
-//            } catch (Exception e) {
-//                log.error("예기치 않은 오류 발생: ", e);
-//            }
-
-//        }
+    //  주간 청구액 및 수납액 집계 통계 처리 잡
+//  15, 45초마다 실행( 테스트용 )
+//  @Scheduled(cron = "15,45 * * * * ?")
+    // 매주 월요일 새벽 5시에 작동
+    @Scheduled(cron = "0 0 5 ? * MON")
+    public void weeklyJob() {
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addLong("weeklyInvoiceStatisticsJob", System.currentTimeMillis())
+                .toJobParameters();
+        try {
+            log.info("weeklyInvoiceStatisticsJob 실행 시작");
+            jobLauncher.run(weeklyInvoiceStatisticsJob, jobParameters);
+            log.info("weeklyInvoiceStatisticsJob 실행 완료");
+        } catch (JobExecutionAlreadyRunningException e) {
+            log.error("JobExecutionAlreadyRunningException 발생: ", e);
+        } catch (JobRestartException e) {
+            log.error("JobRestartException 발생: ", e);
+        } catch (JobInstanceAlreadyCompleteException e) {
+            log.error("JobInstanceAlreadyCompleteException 발생: ", e);
+        } catch (JobParametersInvalidException e) {
+            log.error("JobParametersInvalidException 발생: ", e);
+        } catch (Exception e) {
+            log.error("예기치 않은 오류 발생: ", e);
+        }
     }
 
+    //  월간 청구액 및 수납액 집계 통계 처리 잡
+//  15, 45초마다 실행( 테스트용 )
+//  @Scheduled(cron = "0,30 * * * * ?")
+    //  매월 1일 새벽 1시에 작동
+    @Scheduled(cron = "0 0 6 1 * ?")
+    public void monthlyJob() {
+        JobParameters jobParameters = new JobParametersBuilder()
+                .addLong("monthlyInvoiceStatisticsJob", System.currentTimeMillis())
+                .toJobParameters();
+        try {
+            log.info("monthlyInvoiceStatisticsJob 실행 시작");
+            jobLauncher.run(monthlyInvoiceStatisticsJob, jobParameters);
+            log.info("monthlyInvoiceStatisticsJob 실행 완료");
+        } catch (JobExecutionAlreadyRunningException e) {
+            log.error("JobExecutionAlreadyRunningException 발생: ", e);
+        } catch (JobRestartException e) {
+            log.error("JobRestartException 발생: ", e);
+        } catch (JobInstanceAlreadyCompleteException e) {
+            log.error("JobInstanceAlreadyCompleteException 발생: ", e);
+        } catch (JobParametersInvalidException e) {
+            log.error("JobParametersInvalidException 발생: ", e);
+        } catch (Exception e) {
+            log.error("예기치 않은 오류 발생: ", e);
+        }
+
+    }
+}
 
 
 
