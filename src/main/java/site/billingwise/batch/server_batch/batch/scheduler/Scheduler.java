@@ -132,7 +132,7 @@ public class Scheduler {
     //  월간 청구액 및 수납액 집계 통계 처리 잡
 //  15, 45초마다 실행( 테스트용 )
 //  @Scheduled(cron = "0,30 * * * * ?")
-    //  매월 1일 새벽 1시에 작동
+    //  매월 1일 새벽 6시에 작동
     @Scheduled(cron = "0 0 6 1 * ?")
     public void monthlyJob() {
         JobParameters jobParameters = new JobParametersBuilder()
