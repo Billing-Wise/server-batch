@@ -1,0 +1,51 @@
+{
+  "containerDefinitions": [
+    {
+      "name": "t5-batch-container",
+      "image": "891376922202.dkr.ecr.ap-northeast-2.amazonaws.com/t5-batch-ecr",
+      "cpu": 0,
+      "portMappings": [
+        {
+          "name": "t5-batch-port",
+          "containerPort": 9090,
+          "hostPort": 9090,
+          "protocol": "tcp",
+          "appProtocol": "http"
+        }
+      ],
+      "essential": true,
+      "environment": [],
+      "environmentFiles": [],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "ulimits": [],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/t5-batch-task-definition",
+          "awslogs-create-group": "true",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        },
+        "secretOptions": []
+      },
+      "systemControls": []
+    }
+  ],
+  "family": "t5-batch-task-definition",
+  "taskRoleArn": "arn:aws:iam::891376922202:role/ecs-task-execution-role",
+  "executionRoleArn": "arn:aws:iam::891376922202:role/ecsTaskExecutionRole",
+  "networkMode": "awsvpc",
+  "volumes": [],
+  "placementConstraints": [],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "1024",
+  "memory": "3072",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "tags": []
+}
