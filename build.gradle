@@ -2,7 +2,9 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.2.7'
 	id 'io.spring.dependency-management' version '1.1.5'
-	id 'checkstyle'
+	id 'com.google.cloud.tools.jib' version '3.4.3'
+	id 'org.sonarqube' version '4.4.1.3373'
+	id 'jacoco'
 }
 
 group = 'site.billingwise.batch'
@@ -42,18 +44,6 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-// Checkstyle 설정을 추가합니다.
-tasks.withType(Checkstyle) {
-	reports {
-		xml.required = true
-	}
-}
-
-checkstyle {
-	configFile = file("config/checkstyle/naver-checkstyle-rules.xml")
-	configProperties = ["suppressionFile": "config/checkstyle/naver-checkstyle-suppressions.xml"]
-}
-
 ext {
 	set('springCloudVersion', "2023.0.2")
 }
@@ -67,4 +57,35 @@ dependencyManagement {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+jacocoTestReport {
+	reports {
+		xml.required.set(true)
+	}
+}
+
+jib {
+	from {
+		image = "eclipse-temurin:17-jdk"
+	}
+	to {
+		image = "891376922202.dkr.ecr.ap-northeast-2.amazonaws.com/t5-batch-ecr"
+		tags = ["${project.version}".toString()]
+		credHelper = 'ecr-login'
+	}
+	container {
+		creationTime = "USE_CURRENT_TIMESTAMP"
+		jvmFlags = ['-Dspring.profiles.active=prod', '-XX:+UseContainerSupport', '-Dserver.port=9090', '-Dfile.encoding=UTF-8', '-Duser.timezone=Asia/Seoul']
+		ports = ['9090']
+	}
+}
+
+sonar {
+	properties {
+		property "sonar.projectKey", "Billing-Wise_sever-batch"
+		property "sonar.organization", "billing-wise"
+		property "sonar.host.url", "https://sonarcloud.io"
+		property 'sonar.coverage.jacoco.xmlReportPaths', 'build/reports/jacoco/test/jacocoTestReport.xml'
+	}
 }

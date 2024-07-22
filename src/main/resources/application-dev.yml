@@ -1,7 +1,7 @@
 spring:
   datasource:
     hikari:
-      jdbc-url: jdbc:mysql://localhost:3307/billingwise?useSSL=false&characterEncoding=UTF-8&serverTimeZone=Asia/Seoul&allowPublicKeyRetrieval=true
+      jdbc-url: jdbc:mysql://localhost:3308/batch_data?useUnicode=true&characterEncoding=utf8
       username: root
       password: 1004
       driver-class-name: com.mysql.cj.jdbc.Driver
