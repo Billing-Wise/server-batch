@@ -1,0 +1,59 @@
+server:
+  port: 9090
+
+---
+spring:
+  profiles:
+    active: dev
+
+---
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+      defer-datasource-initialization: false
+      datasource:
+        initialization-mode: never
+
+---
+spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+---
+spring:
+  batch:
+    job:
+      enabled: false
+
+---
+coolsms:
+  api:
+    key: ${COOLSMS_API_KEY}
+    secret: ${COOLSMS_SECRET_KEY}
+    url: https://api.coolsms.co.kr
+
+---
+pay:
+  api:
+    url: ${PAY_API_URL}
+
+---
+logging:
+  level:
+    org:
+      hibernate: info
