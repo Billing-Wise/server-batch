@@ -23,9 +23,9 @@ public class EmailService {
 
 
     // 결제 실패
-    public void sendPaymentFailMailCode(String email, Invoice invoice, ConsentAccount consentAccount) {
+    public void sendPaymentFailMailCode(String email, Invoice invoice, ConsentAccount consentAccount, String failMessage) {
         try {
-            MimeMessage message = createFailMail(email, invoice, consentAccount);
+            MimeMessage message = createFailMail(email, invoice, consentAccount, failMessage);
             mailSender.send(message);
             log.info("결제 실패 이메일이 성공적으로 전송되었습니다. 수신자: {}", email);
         } catch (MessagingException e) {
@@ -62,32 +62,37 @@ public class EmailService {
         helper.setFrom(fromMail);
         helper.setTo(email);
         helper.setSubject("[빌링와이즈] 결제 성공");
-        String body = "<h1>안녕하세요, 빌링와이즈 입니다.</h1>"
-                + "<p>결제가 성공적으로 처리되었습니다.</p>"
-                + "<p>청구 금액: " + invoice.getChargeAmount() + "</p>"
-                + "<p>은행: " + consentAccount.getBank() + "</p>"
-                + "<p>예금주: " + consentAccount.getOwner() + "</p>"
-                + "<p>계좌번호: " + consentAccount.getNumber() + "</p>"
-                + "<p>고객 문의 번호: " + "010-xxxx-xxxx " + "</p>";
+        String body = """
+                <h1>안녕하세요, 빌링와이즈 입니다.</h1>
+                <p>결제가 성공적으로 처리되었습니다.</p>
+                <p>청구 금액: %d</p>
+                <p>은행: %s</p>
+                <p>예금주: %s</p>
+                <p>계좌번호: %s</p>
+                <p>고객 문의 번호: 010-xxxx-xxxx</p>
+                """.formatted(invoice.getChargeAmount(), consentAccount.getBank(), consentAccount.getOwner(), consentAccount.getNumber());
         helper.setText(body, true);
 
         return message;
     }
 
-    private MimeMessage createFailMail(String email, Invoice invoice, ConsentAccount consentAccount) throws MessagingException {
+    private MimeMessage createFailMail(String email, Invoice invoice, ConsentAccount consentAccount,String failMessage) throws MessagingException {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
         helper.setFrom(fromMail);
         helper.setTo(email);
         helper.setSubject("[빌링와이즈] 결제 실패");
-        String body = "<h1>안녕하세요, 빌링와이즈 입니다.</h1>"
-                + "<p>결제가 실패하였습니다.</p>"
-                + "<p>청구 금액: " + invoice.getChargeAmount() + "</p>"
-                + "<p>은행: " + consentAccount.getBank() + "</p>"
-                + "<p>예금주: " + consentAccount.getOwner() + "</p>"
-                + "<p>계좌번호: " + consentAccount.getNumber() + "</p>"
-                + "<p>고객 문의 번호: " + "010-xxxx-xxxx " + "</p>";
+        String body = """
+                <h1>안녕하세요, 빌링와이즈 입니다.</h1>
+                <p>결제가 실패하였습니다.</p>
+                <p>청구 금액: %d</p>
+                <p>은행: %s</p>
+                <p>예금주: %s</p>
+                <p>계좌번호: %s</p>
+                <p>고객 문의 번호: 010-xxxx-xxxx</p>
+                <p>실패 원인: %s</p>
+                """.formatted(invoice.getChargeAmount(), consentAccount.getBank(), consentAccount.getOwner(), consentAccount.getNumber(), failMessage);
         helper.setText(body, true);
 
         return message;
@@ -100,10 +105,13 @@ public class EmailService {
         helper.setFrom(fromMail);
         helper.setTo(email);
         helper.setSubject("[빌링와이즈] 청구서 발송");
-        String body = "<h1>안녕하세요, 빌링와이즈 입니다.</h1>"
-                + "<p>청구서가 발송되었습니다.</p>"
-                + "<p>청구 금액: " + invoice.getChargeAmount() + "</p>"
-                + "<p>고객 문의 번호: " + "010-xxxx-xxxx " + "</p>";
+        String body = """
+                <h1>안녕하세요, 빌링와이즈 입니다.</h1>
+                <p>청구서가 발송되었습니다.</p>
+                <p>청구 금액: %d</p>
+                <p>고객 문의 번호: 010-xxxx-xxxx</p>
+                www.billingwise.site/m/payment/%d/info
+                """.formatted(invoice.getChargeAmount(), invoice.getId());
         // url 만들 예정
         helper.setText(body, true);
 

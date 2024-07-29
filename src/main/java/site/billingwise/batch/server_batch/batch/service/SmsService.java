@@ -44,21 +44,22 @@ public class SmsService {
         message.setFrom("010-6642-2113");
         message.setTo(to);
 
-        StringBuilder text = new StringBuilder();
-        text.append(" 안녕하세요. [빌링와이즈] 입니다.\n");
-        text.append(" " + year +"년 " + month + "월 " + day + "일 " + "고객님의 정기 결제가 성공적으로 이뤄졌습니다.\n");
-        text.append(" 은행 : " + bank + "\n" );
-        text.append(" 예금주 : " + owner + "\n" );
-        text.append(" 총 금액 : " + itemPrice );
+        String text = """
+                안녕하세요. [빌링와이즈] 입니다.
+                %d년 %d월 %d일 고객님의 정기 결제가 성공적으로 이뤄졌습니다.
+                은행: %s
+                예금주: %s
+                총 금액: %d
+                """.formatted(year, month, day, bank, owner, itemPrice);
 
-        message.setText(text.toString());
+        message.setText(text);
 
 
         SingleMessageSentResponse response = this.messageService.sendOne(new SingleMessageSendingRequest(message));
         return response;
     }
 
-    public SingleMessageSentResponse sendFailBilling(String to, String owner, String bank, Integer itemPrice) {
+    public SingleMessageSentResponse sendFailBilling(String to, String owner, String bank, Integer itemPrice, String failMessage) {
         LocalDateTime now = LocalDateTime.now();
 
         int year = now.getYear();
@@ -70,21 +71,23 @@ public class SmsService {
         message.setFrom("010-6642-2113");
         message.setTo(to);
 
-        StringBuilder text = new StringBuilder();
-        text.append(" 안녕하세요. [빌링와이즈] 입니다.\n");
-        text.append(" " + year +"년 " + month + "월 " + day + "일 " + "고객님의 정기 결제가 이뤄지지 않았습니다.\n");
-        text.append(" 은행 : " + bank + "\n" );
-        text.append(" 예금주 : " + owner + "\n" );
-        text.append(" 총 금액 : " + itemPrice );
+        String text = """
+                안녕하세요. [빌링와이즈] 입니다.
+                %d년 %d월 %d일 고객님의 정기 결제가 이뤄지지 않았습니다.
+                은행: %s
+                예금주: %s
+                총 금액: %d
+                실패 원인: %s
+                """.formatted(year, month, day, bank, owner, itemPrice, failMessage);
 
-        message.setText(text.toString());
+        message.setText(text);
 
 
         SingleMessageSentResponse response = this.messageService.sendOne(new SingleMessageSendingRequest(message));
         return response;
     }
 
-    public SingleMessageSentResponse sendInvoice(String to, String owner, String bank, Integer itemPrice) {
+    public SingleMessageSentResponse sendInvoice(String to, String owner, String bank, Integer itemPrice, Long invoiceId) {
         LocalDateTime now = LocalDateTime.now();
 
         int year = now.getYear();
@@ -96,17 +99,19 @@ public class SmsService {
         message.setFrom("010-6642-2113");
         message.setTo(to);
 
-        StringBuilder text = new StringBuilder();
-        text.append(" 안녕하세요. [빌링와이즈] 입니다.\n");
-        text.append(" " + year +"년 " + month + "월 " + day + "일 " + "고객님의 청구서 보내드립니다.\n");
-        text.append("\n" );
-        text.append("납부 금액\n");
-        text.append(" 금액 : " + itemPrice + "\n");
-        text.append("납부 링크\n");
-        text.append("(link)");
+
+        String text = """
+                안녕하세요. [빌링와이즈] 입니다.
+                %d년 %d월 %d일 고객님의 청구서 보내드립니다.
+
+                납부 금액
+                금액: %d
+                납부 링크
+                www.billingwise.site/m/payment/%d/info
+                """.formatted(year, month, day, itemPrice, invoiceId);
 
 
-        message.setText(text.toString());
+        message.setText(text);
 
 
         SingleMessageSentResponse response = this.messageService.sendOne(new SingleMessageSendingRequest(message));

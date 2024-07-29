@@ -43,7 +43,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
             if(invoice.getPaymentType().getId() == PAYMENT_TYPE_AUTOMATIC_TRANSFER) {
 
                 ConsentAccount consentAccount = invoice.getContract().getMember().getConsentAccount();
-                boolean paymentAttempt = false;
+                PayClientResponse  paymentAttempt = null;
 
                 if (consentAccount != null) {
 
@@ -55,7 +55,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
                 }
 
 
-                if (paymentAttempt) {
+                if (paymentAttempt != null && paymentAttempt.getStatusCode() ==200) {
                     log.info("결제 성공한 invoice ID: {}", invoice.getId());
                     updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_COMPLETED);
                     insertPaymentRecord(invoice, consentAccount);
@@ -68,10 +68,12 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
 
                     // 결제 실패 시
                 } else {
+                    String paymentAttemptMessage = paymentAttempt != null ? paymentAttempt.getMessage() : "결제 시도 실패";
                     log.info("결제 실패한 invoice ID: {}", invoice.getId());
-                    emailService.sendPaymentFailMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount);
+                    emailService.sendPaymentFailMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount, paymentAttemptMessage);
                     updateFailPaymentStatus(invoice.getId());
-                    smsService.sendFailBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
+                    smsService.sendFailBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(),
+                             invoice.getChargeAmount().intValue(), paymentAttemptMessage);
                     // 단건일 경우( 계약 종료로 변경 )
                     if(!checkSubscription) {
                         updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);
@@ -83,7 +85,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
                 log.info("납부자 결제  invoice ID: {}", invoice.getId());
                 emailService.sendInvoiceMail(invoice.getContract().getMember().getEmail(), invoice);
                 updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_PENDING);
-                smsService.sendInvoice(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
+                smsService.sendInvoice(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue(),invoice.getId());
 
                 // 단건일 경우( 계약 종료로 변경 )
                 if(!checkSubscription) {
@@ -104,7 +106,6 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
         jdbcTemplate.update(sql,  invoiceId);
     }
 
-
     private void insertPaymentRecord(Invoice invoice, ConsentAccount consentAccount) {
         String sql = "insert into payment (invoice_id, payment_method, pay_amount, created_at, updated_at, is_deleted) values (?, ?, ?, NOW(), NOW(), false)";
         jdbcTemplate.update(sql, invoice.getId(), "ACCOUNT", invoice.getChargeAmount());
@@ -124,18 +125,10 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
         jdbcTemplate.update(sql, statusId, invoiceId);
     }
 
-    //결제 시도
-    private boolean processAutoPayment(Invoice invoice, ConsentAccount consentAccount) {
-
-        String type = new String();
-        if(invoice.getPaymentType().getId() == PAYMENT_TYPE_AUTOMATIC_TRANSFER) {
-            type = "account";
-        }
+    // 결제 시도
+    private PayClientResponse processAutoPayment(Invoice invoice, ConsentAccount consentAccount) {
+        String type = "account";
         String number = consentAccount.getNumber();
-        PayClientResponse response = payClient.pay(type, number);
-
-        log.info("결제 시도 세부 내역 invoice ID: {}, Response status: {}", invoice.getId(), response.getStatusCode());
-
-        return response.getStatusCode() == 200;
+        return payClient.pay(type, number);
     }
 }
