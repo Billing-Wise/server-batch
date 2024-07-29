@@ -63,14 +63,22 @@ public class WeeklyInvoiceStaticsJobConfig {
     private ItemReader<? extends Invoice> weeklyInvoiceReader() {
         LocalDateTime startDate = LocalDateTime.now().minusWeeks(1).with(DayOfWeek.MONDAY);
         LocalDateTime endDate = startDate.plusDays(6);
+
+        String sql = """
+            select inv.invoice_id, inv.charge_amount, inv.due_date, inv.is_deleted, 
+                   inv.payment_status_id, con.contract_id, con.member_id, 
+                   mem.client_id
+            from invoice inv
+            join contract con ON inv.contract_id = con.contract_id
+            join member mem ON con.member_id = mem.member_id
+            where inv.due_date >= ? AND inv.due_date <= ? AND inv.is_deleted = false
+        """;
+
         return new JdbcCursorItemReaderBuilder<Invoice>()
                 .name("weeklyInvoiceReader")
                 .dataSource(dataSource)
                 .fetchSize(CHUNK_SIZE)
-                .sql("SELECT i.*, c.member_id, m.client_id FROM invoice i " +
-                        "JOIN contract c ON i.contract_id = c.contract_id  " +
-                        "JOIN member m ON c.member_id = m.member_id " +
-                        "WHERE i.due_date >= ? AND i.due_date <= ?")
+                .sql(sql)
                 .preparedStatementSetter(new ArgumentPreparedStatementSetter(new Object[]{startDate, endDate}))
                 .rowMapper(new StaticsInvoiceRowMapper())
                 .build();

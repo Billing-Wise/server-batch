@@ -1,6 +1,7 @@
 package site.billingwise.batch.server_batch.batch.generateinvoice;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.stereotype.Component;
@@ -13,9 +14,12 @@ import site.billingwise.batch.server_batch.domain.invoice.repository.PaymentStat
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import static site.billingwise.batch.server_batch.batch.util.StatusConstants.INVOICE_TYPE_MANUAL_BILLING;
+
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class GenerateInvoiceWriter implements ItemWriter<Contract> {
 
     private final PaymentStatusRepository paymentStatusRepository;
@@ -34,9 +38,18 @@ public class GenerateInvoiceWriter implements ItemWriter<Contract> {
         for (Contract contract : chunk) {
             boolean exists = invoiceRepository.existsByContractAndMonthAndYear(contract, nextMonthValue, yearValue);
 
+            if(INVOICE_TYPE_MANUAL_BILLING == contract.getInvoiceType().getId()) {
+                continue;
+            }
+
+            if(contract.getIsDeleted()){
+                continue;
+            }
+
             if (!exists) {
                 LocalDate setContractDate = LocalDate.of(yearValue, nextMonthValue, contract.getContractCycle());
                 LocalDateTime dueDate = calculateDueDate(contract, setContractDate);
+
 
                 Invoice invoice = Invoice.builder()
                         .contract(contract)
@@ -45,6 +58,7 @@ public class GenerateInvoiceWriter implements ItemWriter<Contract> {
                         .paymentStatus(paymentStatusUnpaid)
                         .chargeAmount(contract.getItemPrice() * contract.getItemAmount())
                         .contractDate(setContractDate.atStartOfDay())
+                        .isDeleted(false)
                         .dueDate(dueDate)
                         .build();
                 invoiceRepository.save(invoice);

@@ -49,12 +49,17 @@ public class JdbcGenerateInvoiceJobConfig {
 
     @Bean
     public ItemReader<Contract> jdbcContractItemReader() {
+        String sql = """
+            select con.contract_id, con.invoice_type_id, con.payment_type_id, con.contract_cycle, 
+            con.item_price, con.item_amount, con.is_deleted, con.is_subscription 
+            from contract con 
+            where con.contract_status_id = 2 and con.is_deleted = false
+        """;
+
         return new JdbcCursorItemReaderBuilder<Contract>()
                 .name("jdbcContractItemReader")
                 .fetchSize(CHUNK_SIZE)
-                .sql("select c.*, c.is_deleted " +
-                        "from contract c " +
-                        "where c.contract_status_id = 2")
+                .sql(sql)
                 .rowMapper(new JdbcContractRowMapper())
                 .dataSource(dataSource)
                 .build();

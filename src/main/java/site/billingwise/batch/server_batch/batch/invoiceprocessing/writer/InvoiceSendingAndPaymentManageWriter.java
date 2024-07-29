@@ -32,10 +32,6 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
 
         for(Invoice invoice : chunk) {
 
-            if(invoice.getIsDeleted()) {
-                log.info("삭제된 invoice 데이터 ID: {}", invoice.getId());
-                continue;
-            }
 
             Contract contract = invoice.getContract();
             boolean checkSubscription = contract.getIsSubscription();

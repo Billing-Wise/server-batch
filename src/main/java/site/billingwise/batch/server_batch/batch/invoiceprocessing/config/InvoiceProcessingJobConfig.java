@@ -73,15 +73,23 @@ public class InvoiceProcessingJobConfig {
 
     private ItemReader<? extends Invoice> invoiceSendingAndPaymentManageReader() {
 
+        String sql = """
+                    select 
+                        inv.invoice_id, inv.contract_id, inv.payment_type_id, inv.payment_status_id, 
+                        inv.charge_amount, inv.contract_date, inv.due_date, inv.is_deleted, 
+                        con.member_id, mem.email, mem.phone,  mem.name, consent_acc.number, consent_acc.bank, consent_acc.owner, con.is_subscription 
+                    from invoice inv 
+                    join contract con ON inv.contract_id = con.contract_id 
+                    join member mem ON con.member_id = mem.member_id 
+                    left join consent_account consent_acc ON mem.member_id = consent_acc.member_id 
+                    where inv.contract_date >= curdate() AND inv.contract_date < curdate() + interval 1 day 
+                    and inv.is_deleted = false
+                """;
+
         return new JdbcCursorItemReaderBuilder<Invoice>()
                 .name("invoiceSendingAndPaymentManageReader")
                 .fetchSize(CHUNK_SIZE)
-                .sql("select i.*, c.member_id, m.email, m.name, m.phone, ca.number, ca.bank, ca.owner, i.is_deleted, c.is_subscription " +
-                        "from invoice i " +
-                        "join contract c ON i.contract_id = c.contract_id " +
-                        "join member m ON c.member_id = m.member_id " +
-                        "left join consent_account ca ON m.member_id = ca.member_id " +
-                        "where i.contract_date >= curdate() AND i.contract_date < curdate() + interval 1 day")
+                .sql(sql)
                 .rowMapper(new InvoiceRowMapper())
                 .dataSource(dataSource)
                 .build();

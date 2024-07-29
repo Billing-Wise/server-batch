@@ -29,25 +29,17 @@ public class StaticsInvoiceRowMapper implements RowMapper<Invoice> {
                 .member(member)
                 .build();
 
-        PaymentType paymentType = PaymentType.builder()
-                .id(rs.getLong("payment_type_id"))
-                .build();
-
         PaymentStatus paymentStatus = PaymentStatus.builder()
                 .id(rs.getLong("payment_status_id"))
                 .build();
-
 
         return Invoice.builder()
                 .id(rs.getLong("invoice_id"))
                 .contract(contract)
                 .chargeAmount(rs.getLong("charge_amount"))
-                .contractDate(rs.getTimestamp("contract_date").toLocalDateTime())
                 .dueDate(rs.getTimestamp("due_date").toLocalDateTime())
-                .paymentType(paymentType)
                 .paymentStatus(paymentStatus)
                 .isDeleted(rs.getBoolean("is_deleted"))
                 .build();
-
     }
 }

@@ -47,10 +47,6 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
                 continue;
             }
 
-            if(contract.getIsDeleted()){
-                continue;
-            }
-
 
             // 청구가 이미 만들어져 있으면, pass( 원래는 자동 청구인데, 단발성으로 청구를 생성한 경우 )
             if(!invoiceExists(contract, nextMonthValue, yearValue)){

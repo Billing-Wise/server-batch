@@ -29,10 +29,7 @@ public class CustomWeeklyInvoiceWriter implements ItemWriter<Invoice> {
 
             log.info("주간 통계 invoice 데이터 ID: {}", invoice.getId());
 
-            if (invoice.getIsDeleted()) {
-                log.info("삭제된 invoice 데이터, skipping: {}", invoice.getId());
-                continue;
-            }
+
             if (invoice.getPaymentStatus().getId() == PAYMENT_STATUS_PENDING) {
                 log.info("아직 결제 대기 중인 invoice 데이터, skipping: {}", invoice.getId());
                 continue;
