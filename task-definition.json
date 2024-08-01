@@ -30,6 +30,41 @@
         "secretOptions": []
       },
       "systemControls": []
+    },
+    {
+      "name": "aws-otel-collector",
+      "image": "public.ecr.aws/aws-observability/aws-otel-collector:v0.40.0",
+      "cpu": 0,
+      "portMappings": [],
+      "essential": true,
+      "command": [
+        "--config",
+        "s3://t5-bucket.s3.ap-northeast-2.amazonaws.com/ecs-amp-prometheus.yaml"
+      ],
+      "environment": [
+        {
+          "name": "AWS_PROMETHEUS_SCRAPING_ENDPOINT",
+          "value": "0.0.0.0:9090"
+        },
+        {
+          "name": "AWS_PROMETHEUS_ENDPOINT",
+          "value": "https://aps-workspaces.ap-northeast-2.amazonaws.com/workspaces/ws-b7a8e8a8-64f4-4f2c-82f3-8722683960aa/api/v1/remote_write"
+        }
+      ],
+      "environmentFiles": [],
+      "mountPoints": [],
+      "volumesFrom": [],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/ecs-aws-otel-sidecar-collector",
+          "awslogs-create-group": "true",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "ecs"
+        },
+        "secretOptions": []
+      },
+      "systemControls": []
     }
   ],
   "family": "t5-batch-task-definition",
