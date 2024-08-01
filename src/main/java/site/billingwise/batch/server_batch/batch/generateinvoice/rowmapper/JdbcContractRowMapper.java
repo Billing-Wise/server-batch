@@ -2,11 +2,9 @@ package site.billingwise.batch.server_batch.batch.generateinvoice.rowmapper;
 
 import org.springframework.jdbc.core.RowMapper;
 import site.billingwise.batch.server_batch.domain.contract.Contract;
-import site.billingwise.batch.server_batch.domain.contract.ContractStatus;
 import site.billingwise.batch.server_batch.domain.contract.PaymentType;
 import site.billingwise.batch.server_batch.domain.invoice.InvoiceType;
-import site.billingwise.batch.server_batch.domain.item.Item;
-import site.billingwise.batch.server_batch.domain.member.Member;
+
 
 import java.sql.ResultSet;
 import java.sql.SQLException;

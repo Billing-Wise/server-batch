@@ -1,6 +1,7 @@
 package site.billingwise.batch.server_batch.batch.generateinvoice.jdbc;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
@@ -23,14 +24,13 @@ import static site.billingwise.batch.server_batch.batch.util.StatusConstants.PAY
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
 
     private final JdbcTemplate jdbcTemplate;
 
-
     @Override
     public void write(Chunk<? extends Contract> chunk) throws Exception {
-
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime nextMonth = now.plusMonths(1);
         int nextMonthValue = nextMonth.getMonthValue();
@@ -40,37 +40,37 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
 
         List<Invoice> invoices = new ArrayList<>();
 
+        for (Contract contract : chunk) {
 
-        for(Contract contract : chunk) {
-            // 수동 청구면 pass(애초에 계약이 수동 청구인 경우)
-            if(INVOICE_TYPE_MANUAL_BILLING == contract.getInvoiceType().getId()) {
-                continue;
-            }
+//                if (contract.getId() == 30 ) {
+////                    log.error("의도적인 예외 발생: " + contract.getId());
+//                    throw new RuntimeException(super.toString());
+//                }
 
 
-            // 청구가 이미 만들어져 있으면, pass( 원래는 자동 청구인데, 단발성으로 청구를 생성한 경우 )
-            if(!invoiceExists(contract, nextMonthValue, yearValue)){
-                // 약정일
-                LocalDateTime setInvoiceDate = LocalDateTime.of(yearValue, nextMonthValue, contract.getContractCycle(), 0, 0);
-                // 결제기한
-                LocalDateTime payDueDate = calculateDueDate(contract, setInvoiceDate);
+                if (INVOICE_TYPE_MANUAL_BILLING == contract.getInvoiceType().getId()) {
+                    continue;
+                }
 
-                Invoice invoice = Invoice.builder()
-                        .contract(contract)
-                        .invoiceType(contract.getInvoiceType())
-                        .paymentType(contract.getPaymentType())
-                        .paymentStatus(pendingPaymentStatus)
-                        .chargeAmount(contract.getItemPrice() * contract.getItemAmount())
-                        .contractDate(setInvoiceDate)
-                        .dueDate(payDueDate)
-                        .isDeleted(false)
-                        .createdAt(now)
-                        .updatedAt(now)
-                        .build();
+                if (!invoiceExists(contract, nextMonthValue, yearValue)) {
+                    LocalDateTime setInvoiceDate = LocalDateTime.of(yearValue, nextMonthValue, contract.getContractCycle(), 0, 0);
+                    LocalDateTime payDueDate = calculateDueDate(contract, setInvoiceDate);
 
-                invoices.add(invoice);
+                    Invoice invoice = Invoice.builder()
+                            .contract(contract)
+                            .invoiceType(contract.getInvoiceType())
+                            .paymentType(contract.getPaymentType())
+                            .paymentStatus(pendingPaymentStatus)
+                            .chargeAmount(contract.getItemPrice() * contract.getItemAmount())
+                            .contractDate(setInvoiceDate)
+                            .dueDate(payDueDate)
+                            .isDeleted(false)
+                            .createdAt(now)
+                            .updatedAt(now)
+                            .build();
 
-            }
+                    invoices.add(invoice);
+                }
         }
 
         if (!invoices.isEmpty()) {
@@ -82,8 +82,7 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
         String sql = "insert into invoice (contract_id, invoice_type_id, payment_type_id, payment_status_id, charge_amount, contract_date, due_date, is_deleted, created_at, updated_at)" +
                 " values (?, ?, ?, ?, ?, ?, ?, false, NOW(), NOW())";
 
-        jdbcTemplate.batchUpdate(sql,new BatchPreparedStatementSetter() {
-
+        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
                 Invoice invoice = invoices.get(i);
@@ -119,7 +118,7 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
     }
 
     private boolean invoiceExists(Contract contract, int month, int year) {
-        LocalDateTime startDate = LocalDateTime.of(year, month, 1, 0, 0,0);
+        LocalDateTime startDate = LocalDateTime.of(year, month, 1, 0, 0, 0);
         LocalDateTime endDate = startDate.plusMonths(1).minusSeconds(1);
 
         String sql = "select count(*) from invoice where contract_id = ? " +

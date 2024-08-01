@@ -13,11 +13,16 @@ import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuild
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import site.billingwise.batch.server_batch.batch.invoicestaticsprocessing.rowmapper.StaticsInvoiceRowMapper;
 import site.billingwise.batch.server_batch.batch.invoicestaticsprocessing.writer.CustomMonthlyInvoiceWriter;
+import site.billingwise.batch.server_batch.batch.listner.CustomRetryListener;
+import site.billingwise.batch.server_batch.batch.listner.CustomSkipListener;
 import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
 import site.billingwise.batch.server_batch.batch.listner.statistic.MonthlyInvoiceStatisticsListener;
+import site.billingwise.batch.server_batch.batch.policy.backoff.CustomBackOffPolicy;
+import site.billingwise.batch.server_batch.batch.policy.skip.CustomSkipPolicy;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
 
 import javax.sql.DataSource;
@@ -32,6 +37,11 @@ public class MonthlyInvoiceStatisticsJobConfig {
     private final DataSource dataSource;
     private final JobCompletionCheckListener jobCompletionCheckListener;
     private final MonthlyInvoiceStatisticsListener monthlyInvoiceStatisticsListener;
+    private final JdbcTemplate jdbcTemplate;
+    private final CustomRetryListener retryListener;
+    private final CustomSkipListener customSkipListener;
+    private final CustomSkipPolicy customSkipPolicy;
+
 
     @Bean
     public Job monthlyInvoiceStatisticsJob(JobRepository jobRepository, Step monthlyInvoiceStatisticsStep) {
@@ -43,16 +53,28 @@ public class MonthlyInvoiceStatisticsJobConfig {
 
     @Bean
     Step monthlyInvoiceStatisticsStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+
+        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 10000L);
+
         return new StepBuilder("monthlyInvoiceStatisticsStep", jobRepository)
                 .<Invoice, Invoice>chunk(CHUNK_SIZE, transactionManager)
                 .reader(monthlyInvoiceReader())
                 .writer(monthlyInvoiceWriter())
                 .listener(monthlyInvoiceStatisticsListener)
+                .faultTolerant()
+                .retry(Exception.class)
+                .retryLimit(5)
+                .backOffPolicy(customBackOffPolicy)
+                .listener(retryListener)
+                .skip(Exception.class)
+                .skipPolicy(customSkipPolicy)
+                .listener(customSkipListener)
                 .build();
+
     }
 
     private ItemWriter<? super Invoice> monthlyInvoiceWriter() {
-        return new CustomMonthlyInvoiceWriter(monthlyInvoiceStatisticsListener);
+        return new CustomMonthlyInvoiceWriter(monthlyInvoiceStatisticsListener, jdbcTemplate);
     }
 
     private ItemReader<? extends Invoice> monthlyInvoiceReader() {

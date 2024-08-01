@@ -16,8 +16,12 @@ import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
 import org.springframework.transaction.PlatformTransactionManager;
 import site.billingwise.batch.server_batch.batch.invoicestaticsprocessing.rowmapper.StaticsInvoiceRowMapper;
 import site.billingwise.batch.server_batch.batch.invoicestaticsprocessing.writer.CustomWeeklyInvoiceWriter;
+import site.billingwise.batch.server_batch.batch.listner.CustomRetryListener;
+import site.billingwise.batch.server_batch.batch.listner.CustomSkipListener;
 import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
 import site.billingwise.batch.server_batch.batch.listner.statistic.WeeklyInvoiceStatisticsListener;
+import site.billingwise.batch.server_batch.batch.policy.backoff.CustomBackOffPolicy;
+import site.billingwise.batch.server_batch.batch.policy.skip.CustomSkipPolicy;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
 
 import javax.sql.DataSource;
@@ -33,6 +37,9 @@ public class WeeklyInvoiceStaticsJobConfig {
     private final DataSource dataSource;
     private final JobCompletionCheckListener jobCompletionCheckListener;
     private final WeeklyInvoiceStatisticsListener weeklyInvoiceStatisticsListener;
+    private final CustomRetryListener retryListener;
+    private final CustomSkipListener customSkipListener;
+    private final CustomSkipPolicy customSkipPolicy;
 
 
     @Bean
@@ -46,11 +53,21 @@ public class WeeklyInvoiceStaticsJobConfig {
     @Bean
     Step weeklyInvoiceStatisticsStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
 
+        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 10000L);
+
         return new StepBuilder("weeklyInvoiceStatisticsStep", jobRepository)
                 .<Invoice, Invoice>chunk(CHUNK_SIZE, transactionManager)
                 .reader(weeklyInvoiceReader())
                 .writer(weeklyInvoiceWriter())
                 .listener(weeklyInvoiceStatisticsListener)
+                .faultTolerant()
+                .retry(Exception.class)
+                .retryLimit(5)
+                .backOffPolicy(customBackOffPolicy)
+                .listener(retryListener)
+                .skip(Exception.class)
+                .skipPolicy(customSkipPolicy)
+                .listener(customSkipListener)
                 .build();
 
     }

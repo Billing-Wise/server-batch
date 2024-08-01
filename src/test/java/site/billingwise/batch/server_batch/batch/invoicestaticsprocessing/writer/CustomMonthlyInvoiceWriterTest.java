@@ -30,7 +30,7 @@ public class CustomMonthlyInvoiceWriterTest {
     @BeforeEach
     public void setUp() {
         MockitoAnnotations.openMocks(this);
-        writer = new CustomMonthlyInvoiceWriter(invoiceStatisticsListener);
+//        writer = new CustomMonthlyInvoiceWriter(invoiceStatisticsListener);
     }
 
     @Test

@@ -1,6 +1,5 @@
 package site.billingwise.batch.server_batch.batch.invoiceprocessing.config;
 
-import feign.Client;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.Job;
@@ -19,7 +18,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import site.billingwise.batch.server_batch.batch.invoiceprocessing.rowmapper.InvoiceRowMapper;
 import site.billingwise.batch.server_batch.batch.invoiceprocessing.tasklet.CustomUpdateOverdueInvoicesTasklet;
 import site.billingwise.batch.server_batch.batch.invoiceprocessing.writer.InvoiceSendingAndPaymentManageWriter;
+import site.billingwise.batch.server_batch.batch.listner.CustomRetryListener;
+import site.billingwise.batch.server_batch.batch.listner.CustomSkipListener;
 import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
+import site.billingwise.batch.server_batch.batch.policy.backoff.CustomBackOffPolicy;
+import site.billingwise.batch.server_batch.batch.policy.skip.CustomSkipPolicy;
 import site.billingwise.batch.server_batch.batch.service.EmailService;
 import site.billingwise.batch.server_batch.batch.service.SmsService;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
@@ -39,6 +42,9 @@ public class InvoiceProcessingJobConfig {
     private final EmailService emailService;
     private final SmsService smsService;
     private final PayClient payClient;
+    private final CustomRetryListener retryListener;
+    private final CustomSkipListener customSkipListener;
+    private final CustomSkipPolicy customSkipPolicy;
 
     @Bean
     public Job invoiceProcessingJob(JobRepository jobRepository, Step invoiceSendingAndPaymentManageStep, Step invoiceDueDateUpdateStep) {
@@ -51,11 +57,23 @@ public class InvoiceProcessingJobConfig {
 
     @Bean
     public Step invoiceSendingAndPaymentManageStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+        //backoff 정책 만들기
+        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 10000L);
+
         return new StepBuilder("InvoiceSendingAndPaymentManageStep", jobRepository)
                 .<Invoice, Invoice>chunk(CHUNK_SIZE, transactionManager)
                 .reader(invoiceSendingAndPaymentManageReader())
                 .writer(invoiceSendingAndPaymentManageWriter())
+                .faultTolerant()
+                .retry(Exception.class)
+                .retryLimit(5)
+                .backOffPolicy(customBackOffPolicy)
+                .listener(retryListener)
+                .skip(Exception.class)
+                .skipPolicy(customSkipPolicy)
+                .listener(customSkipListener)
                 .build();
+
     }
 
     @Bean

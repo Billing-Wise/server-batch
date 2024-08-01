@@ -30,70 +30,78 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
     @Override
     public void write(Chunk<? extends Invoice> chunk) {
 
-        for(Invoice invoice : chunk) {
+        for (Invoice invoice : chunk) {
+            processInvoice(invoice);
+        }
+    }
+
+    private void processInvoice(Invoice invoice) {
 
 
-            Contract contract = invoice.getContract();
-            boolean checkSubscription = contract.getIsSubscription();
-            long contract_id =  contract.getId();
-            Member member = contract.getMember();
+        Contract contract = invoice.getContract();
+        boolean checkSubscription = contract.getIsSubscription();
+        long contract_id =  contract.getId();
+        Member member = contract.getMember();
 
-            log.info("Processing invoice ID: {}, Contract ID: {}, Member ID: {}", invoice.getId(), contract_id, member.getId());
-            // 자동 이체
-            if(invoice.getPaymentType().getId() == PAYMENT_TYPE_AUTOMATIC_TRANSFER) {
 
-                ConsentAccount consentAccount = invoice.getContract().getMember().getConsentAccount();
-                PayClientResponse  paymentAttempt = null;
+        log.info("Processing invoice ID: {}, Contract ID: {}, Member ID: {}", invoice.getId(), contract_id, member.getId());
 
-                if (consentAccount != null) {
 
-                    log.info("자동 결제 시도 invoice ID: {}, Account Number: {}", invoice.getId(), consentAccount.getNumber());
-                    paymentAttempt = processAutoPayment(invoice,consentAccount);
+        if (invoice.getId() == 520 || invoice.getId() == 530) {
+//                    log.error("의도적인 예외 발생: " + contract.getId());
+            throw new RuntimeException(super.toString());
+        }
 
-                } else {
-                    log.info("자동 결제 시도 안하는 invoice ID: {}", invoice.getId());
+        if(invoice.getPaymentType().getId() == PAYMENT_TYPE_AUTOMATIC_TRANSFER) {
+
+            ConsentAccount consentAccount = invoice.getContract().getMember().getConsentAccount();
+            PayClientResponse  paymentAttempt = null;
+
+            if (consentAccount != null) {
+                log.info("자동 결제 시도 invoice ID: {}, Account Number: {}", invoice.getId(), consentAccount.getNumber());
+                paymentAttempt = processAutoPayment(invoice,consentAccount);
+            } else {
+                log.info("자동 결제 시도 안하는 invoice ID: {}", invoice.getId());
+            }
+
+            if (paymentAttempt != null && paymentAttempt.getStatusCode() ==200) {
+                log.info("결제 성공한 invoice ID: {}", invoice.getId());
+                updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_COMPLETED);
+                insertPaymentRecord(invoice, consentAccount);
+                emailService.sendPaymentSuccessMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount);
+//                smsService.sendSuccessBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
+                // 단건일 경우( 계약 종료로 변경 )
+                if(!checkSubscription) {
+                    updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);
                 }
-
-
-                if (paymentAttempt != null && paymentAttempt.getStatusCode() ==200) {
-                    log.info("결제 성공한 invoice ID: {}", invoice.getId());
-                    updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_COMPLETED);
-                    insertPaymentRecord(invoice, consentAccount);
-                    emailService.sendPaymentSuccessMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount);
-                    smsService.sendSuccessBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
-                    // 단건일 경우( 계약 종료로 변경 )
-                    if(!checkSubscription) {
-                        updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);
-                    }
-
-                    // 결제 실패 시
-                } else {
-                    String paymentAttemptMessage = paymentAttempt != null ? paymentAttempt.getMessage() : "결제 시도 실패";
-                    log.info("결제 실패한 invoice ID: {}", invoice.getId());
-                    emailService.sendPaymentFailMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount, paymentAttemptMessage);
-                    updateFailPaymentStatus(invoice.getId());
-                    smsService.sendFailBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(),
-                             invoice.getChargeAmount().intValue(), paymentAttemptMessage);
-                    // 단건일 경우( 계약 종료로 변경 )
-                    if(!checkSubscription) {
-                        updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);
-                    }
-                }
-
-                // 납부자 결제
-            } else if(invoice.getPaymentType().getId() == PAYMENT_TYPE_PAYER_PAYMENT){
-                log.info("납부자 결제  invoice ID: {}", invoice.getId());
-                emailService.sendInvoiceMail(invoice.getContract().getMember().getEmail(), invoice);
-                updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_PENDING);
-                smsService.sendInvoice(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue(),invoice.getId());
-
+                // 결제 실패 시
+            } else {
+                String paymentAttemptMessage = paymentAttempt != null ? paymentAttempt.getMessage() : "결제 시도 실패";
+                log.info("결제 실패한 invoice ID: {}", invoice.getId());
+                emailService.sendPaymentFailMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount, paymentAttemptMessage);
+                updateFailPaymentStatus(invoice.getId());
+//                smsService.sendFailBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(),
+//                        invoice.getChargeAmount().intValue(), paymentAttemptMessage);
                 // 단건일 경우( 계약 종료로 변경 )
                 if(!checkSubscription) {
                     updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);
                 }
             }
+
+            // 납부자 결제
+        } else if(invoice.getPaymentType().getId() == PAYMENT_TYPE_PAYER_PAYMENT){
+            log.info("납부자 결제  invoice ID: {}", invoice.getId());
+            emailService.sendInvoiceMail(invoice.getContract().getMember().getEmail(), invoice);
+            updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_PENDING);
+//            smsService.sendInvoice(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue(),invoice.getId());
+
+            // 단건일 경우( 계약 종료로 변경 )
+            if(!checkSubscription) {
+                updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);
+            }
         }
     }
+
 
     private void updateNotSubscriptionContractStatus(long contract_id, long contractStatusTerminated){
         String sql = "update contract set contract_status_id = ? where contract_id = ?";

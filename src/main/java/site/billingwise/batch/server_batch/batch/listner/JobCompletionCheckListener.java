@@ -4,7 +4,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.core.JobExecution;
 import org.springframework.batch.core.listener.JobExecutionListenerSupport;
 import org.springframework.stereotype.Component;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
 
@@ -19,20 +18,20 @@ public class JobCompletionCheckListener extends JobExecutionListenerSupport {
     @Override
     public void beforeJob(JobExecution jobExecution) {
         startTime = LocalDateTime.now();
-        log.info("Job started at: {}", startTime);
+        log.info("Job 시작 시간 : {}", startTime);
     }
 
     @Override
     public void afterJob(JobExecution jobExecution) {
         endTime = LocalDateTime.now();
-        log.info("Job ended at: {}",  endTime);
+        log.info("Job 끝난 시간: {}",  endTime);
 
         Duration duration = Duration.between(startTime, endTime);
         long seconds = duration.getSeconds();
         long minutes = seconds / 60;
         seconds = seconds % 60;
 
-        log.info("Job duration: {} minutes and {} seconds", minutes, seconds);
+        log.info("Job 지속 시간: {} minutes and {} seconds", minutes, seconds);
         super.afterJob(jobExecution);
     }
 }

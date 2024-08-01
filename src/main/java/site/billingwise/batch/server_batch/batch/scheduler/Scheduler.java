@@ -107,7 +107,8 @@ public class Scheduler {
     // 15, 45초마다 실행( 테스트용 )
     // @Scheduled(cron = "15,45 * * * * ?")
     // 매주 월요일 새벽 5시에 작동
-    @Scheduled(cron = "0 0 5 ? * MON")
+//    @Scheduled(cron = "0 0 5 ? * MON")
+      @Scheduled(cron = "15,45 * * * * ?")
     public void weeklyJob() {
         JobParameters jobParameters = new JobParametersBuilder()
                 .addLong("weeklyInvoiceStatisticsJob", System.currentTimeMillis())

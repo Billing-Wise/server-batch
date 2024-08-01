@@ -64,3 +64,10 @@ CREATE TABLE invoice_statistics (
                                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                     FOREIGN KEY (type_id) REFERENCES invoice_statistics_type(id)
 );
+
+--- foreign key 참조 (invoice_statistics , client)
+alter table invoice_statistics
+    add constraint invoice_statistics_client_client_id_fk
+        foreign key (client_id) references client (client_id);
+
+
