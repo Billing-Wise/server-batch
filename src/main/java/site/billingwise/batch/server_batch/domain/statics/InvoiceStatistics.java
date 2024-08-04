@@ -7,6 +7,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import site.billingwise.batch.server_batch.domain.common.BaseEntity;
+import site.billingwise.batch.server_batch.domain.user.Client;
 
 import java.time.LocalDateTime;
 
@@ -47,6 +48,7 @@ public class InvoiceStatistics extends BaseEntity {
     @JoinColumn(name = "type_id", nullable = false)
     private InvoiceStatisticsType type;
 
-    @Column(name = "client_id", nullable = false)
-    private Long clientId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id", nullable = false)
+    private Client client;
 }

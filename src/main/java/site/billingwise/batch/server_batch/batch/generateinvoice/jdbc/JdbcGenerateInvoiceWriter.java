@@ -1,6 +1,7 @@
 package site.billingwise.batch.server_batch.batch.generateinvoice.jdbc;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
@@ -23,14 +24,13 @@ import static site.billingwise.batch.server_batch.batch.util.StatusConstants.PAY
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
 
     private final JdbcTemplate jdbcTemplate;
 
-
     @Override
     public void write(Chunk<? extends Contract> chunk) throws Exception {
-
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime nextMonth = now.plusMonths(1);
         int nextMonthValue = nextMonth.getMonthValue();
@@ -40,23 +40,19 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
 
         List<Invoice> invoices = new ArrayList<>();
 
+        for (Contract contract : chunk) {
 
-        for(Contract contract : chunk) {
-            // 수동 청구면 pass(애초에 계약이 수동 청구인 경우)
-            if(INVOICE_TYPE_MANUAL_BILLING == contract.getInvoiceType().getId()) {
+
+            // 수동 청구 계약은 건너뜀
+            if (INVOICE_TYPE_MANUAL_BILLING == contract.getInvoiceType().getId()) {
                 continue;
             }
 
-            if(contract.getIsDeleted()){
-                continue;
-            }
-
-
-            // 청구가 이미 만들어져 있으면, pass( 원래는 자동 청구인데, 단발성으로 청구를 생성한 경우 )
-            if(!invoiceExists(contract, nextMonthValue, yearValue)){
-                // 약정일
+            // 해당 월에 이미 청구서가 존재하는지 확인
+            if (!invoiceExists(contract, nextMonthValue, yearValue)) {
+                // 청구일 설정
                 LocalDateTime setInvoiceDate = LocalDateTime.of(yearValue, nextMonthValue, contract.getContractCycle(), 0, 0);
-                // 결제기한
+                // 납부 기한 계산
                 LocalDateTime payDueDate = calculateDueDate(contract, setInvoiceDate);
 
                 Invoice invoice = Invoice.builder()
@@ -73,7 +69,6 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
                         .build();
 
                 invoices.add(invoice);
-
             }
         }
 
@@ -86,8 +81,7 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
         String sql = "insert into invoice (contract_id, invoice_type_id, payment_type_id, payment_status_id, charge_amount, contract_date, due_date, is_deleted, created_at, updated_at)" +
                 " values (?, ?, ?, ?, ?, ?, ?, false, NOW(), NOW())";
 
-        jdbcTemplate.batchUpdate(sql,new BatchPreparedStatementSetter() {
-
+        jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
             @Override
             public void setValues(PreparedStatement ps, int i) throws SQLException {
                 Invoice invoice = invoices.get(i);
@@ -107,6 +101,7 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
         });
     }
 
+    // '대기' 상태의 PaymentStatus 조회 메서드
     private PaymentStatus findPendingPaymentStatus() {
         String sql = "select payment_status_id, name from payment_status where name = '대기'";
         return jdbcTemplate.queryForObject(sql, (ResultSet rs, int rowNum) ->
@@ -115,15 +110,17 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
                         .build());
     }
 
+    // 납부 기한 계산 메서드
     private LocalDateTime calculateDueDate(Contract contract, LocalDateTime setInvoiceDate) {
         if (PAYMENT_TYPE_PAYER_PAYMENT == contract.getPaymentType().getId()) {
-            return setInvoiceDate.plusDays(3);
+            return setInvoiceDate.plusDays(contract.getPaymentDueCycle());
         }
         return setInvoiceDate;
     }
 
+    // 해당 월에 청구서가 이미 존재하는지 확인
     private boolean invoiceExists(Contract contract, int month, int year) {
-        LocalDateTime startDate = LocalDateTime.of(year, month, 1, 0, 0,0);
+        LocalDateTime startDate = LocalDateTime.of(year, month, 1, 0, 0, 0);
         LocalDateTime endDate = startDate.plusMonths(1).minusSeconds(1);
 
         String sql = "select count(*) from invoice where contract_id = ? " +

@@ -7,6 +7,7 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.core.step.tasklet.TaskletStep;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuilder;
@@ -14,11 +15,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
+import site.billingwise.batch.server_batch.batch.listner.CustomRetryListener;
+import site.billingwise.batch.server_batch.batch.listner.CustomSkipListener;
 import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
 import site.billingwise.batch.server_batch.batch.generateinvoice.rowmapper.JdbcContractRowMapper;
+import site.billingwise.batch.server_batch.batch.listner.StepCompletionCheckListener;
+import site.billingwise.batch.server_batch.batch.policy.backoff.CustomBackOffPolicy;
+import site.billingwise.batch.server_batch.batch.policy.skip.CustomSkipPolicy;
 import site.billingwise.batch.server_batch.domain.contract.Contract;
 
 import javax.sql.DataSource;
+
 
 @Configuration
 @RequiredArgsConstructor
@@ -28,6 +35,10 @@ public class JdbcGenerateInvoiceJobConfig {
     private final DataSource dataSource;
     private final JdbcTemplate jdbcTemplate;
     private final JobCompletionCheckListener jobCompletionCheckListener;
+    private final CustomRetryListener retryListener;
+    private final CustomSkipListener customSkipListener;
+    private final CustomSkipPolicy customSkipPolicy;
+    private final StepCompletionCheckListener stepCompletionCheckListener;
 
     @Bean
     public Job jdbcGenerateInvoiceJob(JobRepository jobRepository, Step jdbcGenerateInvoiceStep) {
@@ -38,23 +49,42 @@ public class JdbcGenerateInvoiceJobConfig {
     }
 
 
+
     @Bean
     public Step jdbcGenerateInvoiceStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
-        return new StepBuilder("jdbcGenerateInvoiceStep", jobRepository)
+
+        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 4000L);
+
+        TaskletStep jdbcGenerateInvoiceStep = new StepBuilder("jdbcGenerateInvoiceStep", jobRepository)
                 .<Contract, Contract>chunk(CHUNK_SIZE, transactionManager)
                 .reader(jdbcContractItemReader())
                 .writer(jdbcContractItemWriter())
+                .faultTolerant()
+                .retry(Exception.class)
+                .retryLimit(2)
+                .backOffPolicy(customBackOffPolicy)
+                .listener(retryListener)
+                .skip(Exception.class)
+                .skipPolicy(customSkipPolicy)
+                .listener(customSkipListener)
+                .listener(stepCompletionCheckListener)
                 .build();
+        return jdbcGenerateInvoiceStep;
     }
 
     @Bean
     public ItemReader<Contract> jdbcContractItemReader() {
+        String sql = """
+            select con.contract_id, con.invoice_type_id, con.payment_type_id, con.contract_cycle, 
+            con.item_price, con.item_amount, con.is_deleted, con.is_subscription, con.payment_due_cycle
+            from contract con 
+            where con.contract_status_id = 2 and con.is_deleted = false
+        """;
+
         return new JdbcCursorItemReaderBuilder<Contract>()
                 .name("jdbcContractItemReader")
                 .fetchSize(CHUNK_SIZE)
-                .sql("select c.*, c.is_deleted " +
-                        "from contract c " +
-                        "where c.contract_status_id = 2")
+                .sql(sql)
                 .rowMapper(new JdbcContractRowMapper())
                 .dataSource(dataSource)
                 .build();

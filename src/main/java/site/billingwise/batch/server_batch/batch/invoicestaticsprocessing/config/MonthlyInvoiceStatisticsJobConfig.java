@@ -13,11 +13,17 @@ import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuild
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.ArgumentPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import site.billingwise.batch.server_batch.batch.invoicestaticsprocessing.rowmapper.StaticsInvoiceRowMapper;
 import site.billingwise.batch.server_batch.batch.invoicestaticsprocessing.writer.CustomMonthlyInvoiceWriter;
+import site.billingwise.batch.server_batch.batch.listner.CustomRetryListener;
+import site.billingwise.batch.server_batch.batch.listner.CustomSkipListener;
 import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
+import site.billingwise.batch.server_batch.batch.listner.StepCompletionCheckListener;
 import site.billingwise.batch.server_batch.batch.listner.statistic.MonthlyInvoiceStatisticsListener;
+import site.billingwise.batch.server_batch.batch.policy.backoff.CustomBackOffPolicy;
+import site.billingwise.batch.server_batch.batch.policy.skip.CustomSkipPolicy;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
 
 import javax.sql.DataSource;
@@ -32,6 +38,12 @@ public class MonthlyInvoiceStatisticsJobConfig {
     private final DataSource dataSource;
     private final JobCompletionCheckListener jobCompletionCheckListener;
     private final MonthlyInvoiceStatisticsListener monthlyInvoiceStatisticsListener;
+    private final JdbcTemplate jdbcTemplate;
+    private final CustomRetryListener retryListener;
+    private final CustomSkipListener customSkipListener;
+    private final CustomSkipPolicy customSkipPolicy;
+    private final StepCompletionCheckListener stepCompletionCheckListener;
+
 
     @Bean
     public Job monthlyInvoiceStatisticsJob(JobRepository jobRepository, Step monthlyInvoiceStatisticsStep) {
@@ -43,29 +55,50 @@ public class MonthlyInvoiceStatisticsJobConfig {
 
     @Bean
     Step monthlyInvoiceStatisticsStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
+        //backoff 정책 만들기
+        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 4000L);
+
         return new StepBuilder("monthlyInvoiceStatisticsStep", jobRepository)
                 .<Invoice, Invoice>chunk(CHUNK_SIZE, transactionManager)
                 .reader(monthlyInvoiceReader())
                 .writer(monthlyInvoiceWriter())
                 .listener(monthlyInvoiceStatisticsListener)
+                .faultTolerant()
+                .retry(Exception.class)
+                .retryLimit(2)
+                .backOffPolicy(customBackOffPolicy)
+                .listener(retryListener)
+                .skip(Exception.class)
+                .skipPolicy(customSkipPolicy)
+                .listener(customSkipListener)
+                .listener(stepCompletionCheckListener)
                 .build();
+
     }
 
     private ItemWriter<? super Invoice> monthlyInvoiceWriter() {
-        return new CustomMonthlyInvoiceWriter(monthlyInvoiceStatisticsListener);
+        return new CustomMonthlyInvoiceWriter(monthlyInvoiceStatisticsListener, jdbcTemplate);
     }
 
     private ItemReader<? extends Invoice> monthlyInvoiceReader() {
         LocalDateTime startDate = LocalDateTime.now().minusMonths(1).withDayOfMonth(1);
         LocalDateTime endDate = startDate.plusMonths(1).minusDays(1);
+
+        String sql = """
+        select inv.invoice_id, inv.charge_amount, inv.due_date, inv.is_deleted, 
+               inv.payment_status_id, con.contract_id, con.member_id, 
+               mem.client_id
+        from invoice inv
+        join contract con ON inv.contract_id = con.contract_id
+        join member mem ON con.member_id = mem.member_id
+        where inv.due_date >= ? AND inv.due_date <= ? AND inv.is_deleted = false
+        """;
+
         return new JdbcCursorItemReaderBuilder<Invoice>()
                 .name("monthlyInvoiceReader")
                 .dataSource(dataSource)
                 .fetchSize(CHUNK_SIZE)
-                .sql("SELECT i.*, c.member_id, m.client_id FROM invoice i " +
-                        "JOIN contract c ON i.contract_id = c.contract_id  " +
-                        "JOIN member m ON c.member_id = m.member_id " +
-                        "WHERE i.due_date >= ? AND i.due_date <= ?")
+                .sql(sql)
                 .preparedStatementSetter(new ArgumentPreparedStatementSetter(new Object[]{startDate, endDate}))
                 .rowMapper(new StaticsInvoiceRowMapper())
                 .build();

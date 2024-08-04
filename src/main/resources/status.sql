@@ -14,7 +14,6 @@ VALUES
     (2, '자동 이체', true, false, NOW(), NOW());
 
 
-
 -- 청구 타입
 INSERT INTO invoice_type (invoice_type_id, name, is_deleted, created_at, updated_at)
 VALUES
@@ -28,8 +27,6 @@ VALUES
     (1, '미납', false, NOW(), NOW()),
     (2, '완납', false, NOW(), NOW()),
     (3, '대기', false, NOW(), NOW());
-
-
 
 
 -- 통계 구분 값
@@ -64,3 +61,10 @@ CREATE TABLE invoice_statistics (
                                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
                                     FOREIGN KEY (type_id) REFERENCES invoice_statistics_type(id)
 );
+
+--- foreign key 참조 (invoice_statistics , client)
+alter table invoice_statistics
+    add constraint invoice_statistics_client_client_id_fk
+        foreign key (client_id) references client (client_id);
+
+

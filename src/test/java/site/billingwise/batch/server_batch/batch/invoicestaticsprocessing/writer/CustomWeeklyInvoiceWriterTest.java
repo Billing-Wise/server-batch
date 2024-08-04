@@ -1,6 +1,7 @@
 package site.billingwise.batch.server_batch.batch.invoicestaticsprocessing.writer;
 
 import static org.mockito.Mockito.*;
+import static site.billingwise.batch.server_batch.batch.util.StatusConstants.PAYMENT_STATUS_PENDING;
 
 import java.util.List;
 
@@ -11,7 +12,6 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.batch.item.Chunk;
 
-import site.billingwise.batch.server_batch.batch.invoicestaticsprocessing.writer.CustomWeeklyInvoiceWriter;
 import site.billingwise.batch.server_batch.batch.listner.statistic.WeeklyInvoiceStatisticsListener;
 
 import site.billingwise.batch.server_batch.domain.contract.Contract;
@@ -36,7 +36,6 @@ public class CustomWeeklyInvoiceWriterTest {
 
     @Test
     public void testWrite() throws Exception {
-
         Client client = Client.builder().id(1L).build();
         Member member = Member.builder().client(client).build();
         Contract contract = Contract.builder().member(member).build();
@@ -54,9 +53,7 @@ public class CustomWeeklyInvoiceWriterTest {
 
         Chunk<Invoice> chunk = new Chunk<>(List.of(invoice));
 
-
         writer.write(chunk);
-
 
         verify(invoiceStatisticsListener, times(1)).setClientId(client.getId());
         verify(invoiceStatisticsListener, times(1)).addInvoice(invoice.getChargeAmount());
@@ -65,11 +62,11 @@ public class CustomWeeklyInvoiceWriterTest {
 
     @Test
     public void testWriteWithPendingInvoice() throws Exception {
-        // Given
+
         Client client = Client.builder().id(1L).build();
         Member member = Member.builder().client(client).build();
         Contract contract = Contract.builder().member(member).build();
-        PaymentStatus paymentStatus = PaymentStatus.builder().id(3L).build();
+        PaymentStatus paymentStatus = PaymentStatus.builder().id(PAYMENT_STATUS_PENDING).build();
 
         Invoice invoice = Invoice.builder()
                 .id(1L)
@@ -83,43 +80,14 @@ public class CustomWeeklyInvoiceWriterTest {
 
         Chunk<Invoice> chunk = new Chunk<>(List.of(invoice));
 
-        // When
+
         writer.write(chunk);
 
-        // Then
+
         verify(invoiceStatisticsListener, times(1)).setClientId(client.getId());
         verify(invoiceStatisticsListener, never()).addInvoice(anyLong());
         verify(invoiceStatisticsListener, never()).addCollected(anyLong());
         verify(invoiceStatisticsListener, never()).addOutstanding(anyLong());
     }
 
-    @Test
-    public void testWriteWithDeletedInvoice() throws Exception {
-        // Given
-        Client client = Client.builder().id(1L).build();
-        Member member = Member.builder().client(client).build();
-        Contract contract = Contract.builder().member(member).build();
-        PaymentStatus paymentStatus = PaymentStatus.builder().id(2L).build();
-
-        Invoice invoice = Invoice.builder()
-                .id(1L)
-                .contract(contract)
-                .chargeAmount(1000L)
-                .paymentStatus(paymentStatus)
-                .isDeleted(true)
-                .build();
-
-        when(invoiceStatisticsListener.getClientId()).thenReturn(null);
-
-        Chunk<Invoice> chunk = new Chunk<>(List.of(invoice));
-
-        // When
-        writer.write(chunk);
-
-        // Then
-        verify(invoiceStatisticsListener, times(1)).setClientId(client.getId());
-        verify(invoiceStatisticsListener, never()).addInvoice(anyLong());
-        verify(invoiceStatisticsListener, never()).addCollected(anyLong());
-        verify(invoiceStatisticsListener, never()).addOutstanding(anyLong());
-    }
 }

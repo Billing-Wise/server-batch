@@ -66,6 +66,7 @@ class JdbcGenerateInvoiceWriterTest {
                 .paymentType(paymentType)
                 .invoiceType(autoInvoiceType)
                 .isDeleted(false)
+                .paymentDueCycle(3)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
