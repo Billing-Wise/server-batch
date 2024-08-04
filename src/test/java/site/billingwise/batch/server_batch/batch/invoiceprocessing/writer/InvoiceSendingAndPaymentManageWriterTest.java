@@ -20,6 +20,7 @@ import site.billingwise.batch.server_batch.feign.PayClientResponse;
 
 import java.lang.reflect.Method;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static site.billingwise.batch.server_batch.batch.util.StatusConstants.*;
@@ -29,12 +30,6 @@ public class InvoiceSendingAndPaymentManageWriterTest {
 
     @Mock
     private JdbcTemplate jdbcTemplate;
-
-    @Mock
-    private EmailService emailService;
-
-    @Mock
-    private SmsService smsService;
 
     @Mock
     private PayClient payClient;
@@ -59,6 +54,7 @@ public class InvoiceSendingAndPaymentManageWriterTest {
         PaymentType paymentType = PaymentType.builder()
                 .id(PAYMENT_TYPE_AUTOMATIC_TRANSFER)
                 .build();
+
 
         invoice = Invoice.builder()
                 .id(1L)
@@ -119,17 +115,21 @@ public class InvoiceSendingAndPaymentManageWriterTest {
     @Test
     @DisplayName("자동 결제 성공 테스트")
     public void testProcessAutoPayment() throws Exception {
-        ConsentAccount consentAccount = ConsentAccount.builder()
-                .number("12345")
-                .build();
+        PayClientResponse successResponse = PayClientResponse.builder().statusCode(200).build();
+        when(payClient.pay("account", "12345123552")).thenReturn(successResponse);
 
-        when(payClient.pay("account", "12345")).thenReturn(PayClientResponse.builder().statusCode(200).build());
+        ConsentAccount consentAccount = ConsentAccount.builder()
+                .number("12345123552")
+                .bank("bank")
+                .owner("변현진")
+                .build();
 
         Method method = InvoiceSendingAndPaymentManageWriter.class.getDeclaredMethod("processAutoPayment", Invoice.class, ConsentAccount.class);
         method.setAccessible(true);
-        boolean result = (boolean) method.invoke(writer, invoice, consentAccount);
+        PayClientResponse result = (PayClientResponse) method.invoke(writer, invoice, consentAccount);
 
-        assert result;
-        verify(payClient).pay("account", "12345");
+        assertEquals(200, result.getStatusCode());
+        verify(payClient).pay("account", "12345123552");
     }
+
 }

@@ -30,7 +30,7 @@ public abstract class InvoiceStatisticsListener implements StepExecutionListener
 
     @Override
     public ExitStatus afterStep(StepExecution stepExecution) {
-        log.info("afterStep 호출");
+        // Step 종료 후 통계가 아직 저장되지 않았다면 저장
         if (!saveInvoked && totalInvoicedMoney > 0) {
             saveStatistics();
         }
@@ -43,6 +43,7 @@ public abstract class InvoiceStatisticsListener implements StepExecutionListener
         LocalDateTime startOfPeriod;
         int periodNumber;
 
+        // 월간 또는 주간 통계에 따라 시작일 및 기간 번호 설정
         if (getStatisticsType() == StatusConstants.STATISTICS_TYPE_MONTHLY) {
             startOfPeriod = today.minusMonths(1).withDayOfMonth(1);
             periodNumber = 0;
@@ -54,9 +55,8 @@ public abstract class InvoiceStatisticsListener implements StepExecutionListener
         updateInvoiceStatics(jdbcTemplate, totalInvoicedMoney, totalCollectedMoney, totalOutstanding, startOfPeriod, periodNumber);
     }
 
+    // 청구서 통계 데이터베이스 업데이트
     private void updateInvoiceStatics(JdbcTemplate jdbcTemplate, long totalInvoicedMoney, long totalCollectedMoney, long totalOutstanding, LocalDateTime startOfPeriod, int periodNumber) {
-        log.info("업데이트 invoice statistics 테이블: totalInvoicedMoney={}, totalCollectedMoney={}, totalOutstanding={}, startOfLastWeek={}, weekNumber={}",
-                totalInvoicedMoney, totalCollectedMoney, totalOutstanding, startOfPeriod, periodNumber);
 
         if (clientId == null) {
             log.info("invoice 테이블에 invoice 데이터 없음");
@@ -82,6 +82,7 @@ public abstract class InvoiceStatisticsListener implements StepExecutionListener
         resetStatistics();
     }
 
+    // 통계 초기화
     public void resetStatistics() {
         totalInvoicedMoney = 0;
         totalCollectedMoney = 0;
@@ -90,18 +91,19 @@ public abstract class InvoiceStatisticsListener implements StepExecutionListener
         saveInvoked = false;
     }
 
+    // 청구 금액 추가
     public void addInvoice(long invoice) {
         totalInvoicedMoney += invoice;
     }
-
+    // 수금액 추가
     public void addCollected(long collected) {
         totalCollectedMoney += collected;
     }
-
+    // 미수금액 추가
     public void addOutstanding(long outstanding) {
         totalOutstanding += outstanding;
     }
-
+    // 클라이언트 ID 설정
     public void setClientId(Long id) {
         this.clientId = id;
     }

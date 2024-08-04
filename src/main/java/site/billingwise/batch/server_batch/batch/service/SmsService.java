@@ -106,6 +106,7 @@ public class SmsService {
 
                 납부 금액
                 금액: %d
+                
                 납부 링크
                 www.billingwise.site/m/payment/%d/info
                 """.formatted(year, month, day, itemPrice, invoiceId);

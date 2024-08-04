@@ -21,6 +21,7 @@ import site.billingwise.batch.server_batch.batch.invoiceprocessing.writer.Invoic
 import site.billingwise.batch.server_batch.batch.listner.CustomRetryListener;
 import site.billingwise.batch.server_batch.batch.listner.CustomSkipListener;
 import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
+import site.billingwise.batch.server_batch.batch.listner.StepCompletionCheckListener;
 import site.billingwise.batch.server_batch.batch.policy.backoff.CustomBackOffPolicy;
 import site.billingwise.batch.server_batch.batch.policy.skip.CustomSkipPolicy;
 import site.billingwise.batch.server_batch.batch.service.EmailService;
@@ -45,6 +46,7 @@ public class InvoiceProcessingJobConfig {
     private final CustomRetryListener retryListener;
     private final CustomSkipListener customSkipListener;
     private final CustomSkipPolicy customSkipPolicy;
+    private final StepCompletionCheckListener stepCompletionCheckListener;
 
     @Bean
     public Job invoiceProcessingJob(JobRepository jobRepository, Step invoiceSendingAndPaymentManageStep, Step invoiceDueDateUpdateStep) {
@@ -58,7 +60,7 @@ public class InvoiceProcessingJobConfig {
     @Bean
     public Step invoiceSendingAndPaymentManageStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
         //backoff 정책 만들기
-        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 10000L);
+        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 4000L);
 
         return new StepBuilder("InvoiceSendingAndPaymentManageStep", jobRepository)
                 .<Invoice, Invoice>chunk(CHUNK_SIZE, transactionManager)
@@ -66,12 +68,13 @@ public class InvoiceProcessingJobConfig {
                 .writer(invoiceSendingAndPaymentManageWriter())
                 .faultTolerant()
                 .retry(Exception.class)
-                .retryLimit(5)
+                .retryLimit(2)
                 .backOffPolicy(customBackOffPolicy)
                 .listener(retryListener)
                 .skip(Exception.class)
                 .skipPolicy(customSkipPolicy)
                 .listener(customSkipListener)
+                .listener(stepCompletionCheckListener)
                 .build();
 
     }
@@ -101,7 +104,8 @@ public class InvoiceProcessingJobConfig {
                     join member mem ON con.member_id = mem.member_id 
                     left join consent_account consent_acc ON mem.member_id = consent_acc.member_id 
                     where inv.contract_date >= curdate() AND inv.contract_date < curdate() + interval 1 day 
-                    and inv.is_deleted = false
+                    and inv.is_deleted = false 
+                    and inv.payment_status_id = 3
                 """;
 
         return new JdbcCursorItemReaderBuilder<Invoice>()

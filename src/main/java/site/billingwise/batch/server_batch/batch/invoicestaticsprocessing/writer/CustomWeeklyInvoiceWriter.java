@@ -23,6 +23,7 @@ public class CustomWeeklyInvoiceWriter implements ItemWriter<Invoice> {
         for (Invoice invoice : chunk) {
             Long invoiceClientId = invoice.getContract().getMember().getClient().getId();
 
+
             if (currentClientId == null) {
                 currentClientId = invoiceClientId;
                 invoiceStatisticsListener.setClientId(currentClientId);
@@ -36,22 +37,17 @@ public class CustomWeeklyInvoiceWriter implements ItemWriter<Invoice> {
                 invoiceStatisticsListener.setClientId(currentClientId);
             }
 
-            log.info("주간 통계 invoice 데이터 ID: {}", invoice.getId());
 
             if (invoice.getPaymentStatus().getId() == PAYMENT_STATUS_PENDING) {
-                log.info("아직 결제 대기 중인 invoice 데이터, skipping: {}", invoice.getId());
                 continue;
             }
 
             invoiceStatisticsListener.addInvoice(invoice.getChargeAmount());
-            log.info("총 청구액에 더할 invoice 데이터 금액: {}", invoice.getChargeAmount());
 
             if (invoice.getPaymentStatus().getId() == PAYMENT_STATUS_COMPLETED) {
                 invoiceStatisticsListener.addCollected(invoice.getChargeAmount());
-                log.info("총 수납금액에 더할 invoice 데이터 금액: {}", invoice.getChargeAmount());
             } else if (invoice.getPaymentStatus().getId() == PAYMENT_STATUS_UNPAID) {
                 invoiceStatisticsListener.addOutstanding(invoice.getChargeAmount());
-                log.info("총 미납금액에 더할 invoice 데이터 금액: {}", invoice.getChargeAmount());
             }
         }
 

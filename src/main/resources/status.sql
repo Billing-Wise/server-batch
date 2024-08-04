@@ -14,7 +14,6 @@ VALUES
     (2, '자동 이체', true, false, NOW(), NOW());
 
 
-
 -- 청구 타입
 INSERT INTO invoice_type (invoice_type_id, name, is_deleted, created_at, updated_at)
 VALUES
@@ -28,8 +27,6 @@ VALUES
     (1, '미납', false, NOW(), NOW()),
     (2, '완납', false, NOW(), NOW()),
     (3, '대기', false, NOW(), NOW());
-
-
 
 
 -- 통계 구분 값

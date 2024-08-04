@@ -14,22 +14,18 @@ import org.springframework.batch.item.database.builder.JdbcCursorItemReaderBuild
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.retry.policy.MapRetryContextCache;
-import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.interceptor.DefaultTransactionAttribute;
 import site.billingwise.batch.server_batch.batch.listner.CustomRetryListener;
 import site.billingwise.batch.server_batch.batch.listner.CustomSkipListener;
 import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
 import site.billingwise.batch.server_batch.batch.generateinvoice.rowmapper.JdbcContractRowMapper;
+import site.billingwise.batch.server_batch.batch.listner.StepCompletionCheckListener;
 import site.billingwise.batch.server_batch.batch.policy.backoff.CustomBackOffPolicy;
-import site.billingwise.batch.server_batch.batch.policy.retry.CustomRetryPolicy;
 import site.billingwise.batch.server_batch.batch.policy.skip.CustomSkipPolicy;
 import site.billingwise.batch.server_batch.domain.contract.Contract;
 
 import javax.sql.DataSource;
-import java.util.HashMap;
+
 
 @Configuration
 @RequiredArgsConstructor
@@ -42,6 +38,7 @@ public class JdbcGenerateInvoiceJobConfig {
     private final CustomRetryListener retryListener;
     private final CustomSkipListener customSkipListener;
     private final CustomSkipPolicy customSkipPolicy;
+    private final StepCompletionCheckListener stepCompletionCheckListener;
 
     @Bean
     public Job jdbcGenerateInvoiceJob(JobRepository jobRepository, Step jdbcGenerateInvoiceStep) {
@@ -56,7 +53,7 @@ public class JdbcGenerateInvoiceJobConfig {
     @Bean
     public Step jdbcGenerateInvoiceStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
 
-        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 10000L);
+        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 4000L);
 
         TaskletStep jdbcGenerateInvoiceStep = new StepBuilder("jdbcGenerateInvoiceStep", jobRepository)
                 .<Contract, Contract>chunk(CHUNK_SIZE, transactionManager)
@@ -64,12 +61,13 @@ public class JdbcGenerateInvoiceJobConfig {
                 .writer(jdbcContractItemWriter())
                 .faultTolerant()
                 .retry(Exception.class)
-                .retryLimit(5)
+                .retryLimit(2)
                 .backOffPolicy(customBackOffPolicy)
                 .listener(retryListener)
                 .skip(Exception.class)
                 .skipPolicy(customSkipPolicy)
                 .listener(customSkipListener)
+                .listener(stepCompletionCheckListener)
                 .build();
         return jdbcGenerateInvoiceStep;
     }
@@ -78,7 +76,7 @@ public class JdbcGenerateInvoiceJobConfig {
     public ItemReader<Contract> jdbcContractItemReader() {
         String sql = """
             select con.contract_id, con.invoice_type_id, con.payment_type_id, con.contract_cycle, 
-            con.item_price, con.item_amount, con.is_deleted, con.is_subscription 
+            con.item_price, con.item_amount, con.is_deleted, con.is_subscription, con.payment_due_cycle
             from contract con 
             where con.contract_status_id = 2 and con.is_deleted = false
         """;

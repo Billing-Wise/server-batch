@@ -42,35 +42,34 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
 
         for (Contract contract : chunk) {
 
-//                if (contract.getId() == 30 ) {
-////                    log.error("의도적인 예외 발생: " + contract.getId());
-//                    throw new RuntimeException(super.toString());
-//                }
 
+            // 수동 청구 계약은 건너뜀
+            if (INVOICE_TYPE_MANUAL_BILLING == contract.getInvoiceType().getId()) {
+                continue;
+            }
 
-                if (INVOICE_TYPE_MANUAL_BILLING == contract.getInvoiceType().getId()) {
-                    continue;
-                }
+            // 해당 월에 이미 청구서가 존재하는지 확인
+            if (!invoiceExists(contract, nextMonthValue, yearValue)) {
+                // 청구일 설정
+                LocalDateTime setInvoiceDate = LocalDateTime.of(yearValue, nextMonthValue, contract.getContractCycle(), 0, 0);
+                // 납부 기한 계산
+                LocalDateTime payDueDate = calculateDueDate(contract, setInvoiceDate);
 
-                if (!invoiceExists(contract, nextMonthValue, yearValue)) {
-                    LocalDateTime setInvoiceDate = LocalDateTime.of(yearValue, nextMonthValue, contract.getContractCycle(), 0, 0);
-                    LocalDateTime payDueDate = calculateDueDate(contract, setInvoiceDate);
+                Invoice invoice = Invoice.builder()
+                        .contract(contract)
+                        .invoiceType(contract.getInvoiceType())
+                        .paymentType(contract.getPaymentType())
+                        .paymentStatus(pendingPaymentStatus)
+                        .chargeAmount(contract.getItemPrice() * contract.getItemAmount())
+                        .contractDate(setInvoiceDate)
+                        .dueDate(payDueDate)
+                        .isDeleted(false)
+                        .createdAt(now)
+                        .updatedAt(now)
+                        .build();
 
-                    Invoice invoice = Invoice.builder()
-                            .contract(contract)
-                            .invoiceType(contract.getInvoiceType())
-                            .paymentType(contract.getPaymentType())
-                            .paymentStatus(pendingPaymentStatus)
-                            .chargeAmount(contract.getItemPrice() * contract.getItemAmount())
-                            .contractDate(setInvoiceDate)
-                            .dueDate(payDueDate)
-                            .isDeleted(false)
-                            .createdAt(now)
-                            .updatedAt(now)
-                            .build();
-
-                    invoices.add(invoice);
-                }
+                invoices.add(invoice);
+            }
         }
 
         if (!invoices.isEmpty()) {
@@ -102,6 +101,7 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
         });
     }
 
+    // '대기' 상태의 PaymentStatus 조회 메서드
     private PaymentStatus findPendingPaymentStatus() {
         String sql = "select payment_status_id, name from payment_status where name = '대기'";
         return jdbcTemplate.queryForObject(sql, (ResultSet rs, int rowNum) ->
@@ -110,13 +110,15 @@ public class JdbcGenerateInvoiceWriter implements ItemWriter<Contract> {
                         .build());
     }
 
+    // 납부 기한 계산 메서드
     private LocalDateTime calculateDueDate(Contract contract, LocalDateTime setInvoiceDate) {
         if (PAYMENT_TYPE_PAYER_PAYMENT == contract.getPaymentType().getId()) {
-            return setInvoiceDate.plusDays(3);
+            return setInvoiceDate.plusDays(contract.getPaymentDueCycle());
         }
         return setInvoiceDate;
     }
 
+    // 해당 월에 청구서가 이미 존재하는지 확인
     private boolean invoiceExists(Contract contract, int month, int year) {
         LocalDateTime startDate = LocalDateTime.of(year, month, 1, 0, 0, 0);
         LocalDateTime endDate = startDate.plusMonths(1).minusSeconds(1);

@@ -27,8 +27,9 @@ public class Scheduler {
     private final Job weeklyInvoiceStatisticsJob;
     private final Job monthlyInvoiceStatisticsJob;
 
-    // 0, 30초마다 실행
-    // 청구 생성 (jpa)
+//    0, 30초마다 실행
+//    청구 생성 (jpa)
+//    jdbcGenerateInvoice랑 같은 기능
 //    @Scheduled(cron = "0,30 * * * * ?")
 //    public void generateInvoice() {
 //        JobParameters jobParameters = new JobParametersBuilder()
@@ -51,12 +52,12 @@ public class Scheduler {
 //        }
 //    }
 
-    // 청구 생성 잡
-    // 15, 45초마다 실행( 테스트 용 )
-    // @Scheduled(cron = "15,45 * * * * ?")
-    // 매달 말일 새벽 3시에 작동
-    @Scheduled(cron = "0 0 3 L * ?")
-    public void jdbcGenerateInvoice() {
+//  청구 생성 잡
+//  15, 45초마다 실행( 테스트 용 )
+//  @Scheduled(cron = "15,45 * * * * ?")
+//  매달 말일 새벽 3시에 작동
+     @Scheduled(cron = "0 0 3 L * ?")
+     public void jdbcGenerateInvoice() {
         JobParameters jobParameters = new JobParametersBuilder()
                 .addLong("jdbcInvoice", System.currentTimeMillis())
                 .toJobParameters();
@@ -107,8 +108,7 @@ public class Scheduler {
     // 15, 45초마다 실행( 테스트용 )
     // @Scheduled(cron = "15,45 * * * * ?")
     // 매주 월요일 새벽 5시에 작동
-//    @Scheduled(cron = "0 0 5 ? * MON")
-      @Scheduled(cron = "15,45 * * * * ?")
+    @Scheduled(cron = "0 0 5 ? * MON")
     public void weeklyJob() {
         JobParameters jobParameters = new JobParametersBuilder()
                 .addLong("weeklyInvoiceStatisticsJob", System.currentTimeMillis())

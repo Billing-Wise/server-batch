@@ -31,6 +31,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
     public void write(Chunk<? extends Invoice> chunk) {
 
         for (Invoice invoice : chunk) {
+
             processInvoice(invoice);
         }
     }
@@ -47,11 +48,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
         log.info("Processing invoice ID: {}, Contract ID: {}, Member ID: {}", invoice.getId(), contract_id, member.getId());
 
 
-        if (invoice.getId() == 520 || invoice.getId() == 530) {
-//                    log.error("의도적인 예외 발생: " + contract.getId());
-            throw new RuntimeException(super.toString());
-        }
-
+        // 실시간 CMS(자동 결제)
         if(invoice.getPaymentType().getId() == PAYMENT_TYPE_AUTOMATIC_TRANSFER) {
 
             ConsentAccount consentAccount = invoice.getContract().getMember().getConsentAccount();
@@ -78,8 +75,8 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
             } else {
                 String paymentAttemptMessage = paymentAttempt != null ? paymentAttempt.getMessage() : "결제 시도 실패";
                 log.info("결제 실패한 invoice ID: {}", invoice.getId());
+                updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_UNPAID);
                 emailService.sendPaymentFailMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount, paymentAttemptMessage);
-                updateFailPaymentStatus(invoice.getId());
 //                smsService.sendFailBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(),
 //                        invoice.getChargeAmount().intValue(), paymentAttemptMessage);
                 // 단건일 경우( 계약 종료로 변경 )
@@ -102,18 +99,14 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
         }
     }
 
-
+    // 단건 계약의 상태를 변경하는 메서드
     private void updateNotSubscriptionContractStatus(long contract_id, long contractStatusTerminated){
-        String sql = "update contract set contract_status_id = ? where contract_id = ?";
+        String sql = "update contract set contract_status_id = ?, updated_at = NOW() where contract_id = ?";
         jdbcTemplate.update(sql, contractStatusTerminated, contract_id);
     }
 
 
-    private void updateFailPaymentStatus(long invoiceId) {
-        String sql = "update invoice set updated_at = now() where invoice_id = ?";
-        jdbcTemplate.update(sql,  invoiceId);
-    }
-
+    // 결제 성공 시 결제 기록 삽입
     private void insertPaymentRecord(Invoice invoice, ConsentAccount consentAccount) {
         String sql = "insert into payment (invoice_id, payment_method, pay_amount, created_at, updated_at, is_deleted) values (?, ?, ?, NOW(), NOW(), false)";
         jdbcTemplate.update(sql, invoice.getId(), "ACCOUNT", invoice.getChargeAmount());
@@ -121,13 +114,13 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
         insertPaymentAccount(invoice.getId(), consentAccount);
     }
 
-
+    // 결제 성공 시 결제 계좌 정보 삽입
     private void insertPaymentAccount(long invoiceId, ConsentAccount consentAccount) {
         String sql = "insert into payment_account (invoice_id, number, bank, owner, created_at, updated_at, is_deleted) values (?, ?, ?, ?, now(), now(), false)";
         jdbcTemplate.update(sql, invoiceId, consentAccount.getNumber(), consentAccount.getBank(), consentAccount.getOwner());
     }
 
-
+    // 청구서의 결제 상태 업데이트
     private void updatePaymentStatus(long invoiceId, long statusId) {
         String sql = "update invoice set payment_status_id = ?, updated_at = now() where invoice_id = ?";
         jdbcTemplate.update(sql, statusId, invoiceId);

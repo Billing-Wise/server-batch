@@ -24,6 +24,7 @@ public class JdbcContractRowMapper implements RowMapper<Contract> {
                 .id(rs.getLong("contract_id"))
                 .invoiceType(invoiceType)
                 .paymentType(paymentType)
+                .paymentDueCycle(rs.getInt("payment_due_cycle"))
                 .isSubscription(rs.getBoolean("is_subscription"))
                 .itemPrice(rs.getLong("item_price"))
                 .itemAmount(rs.getInt("item_amount"))

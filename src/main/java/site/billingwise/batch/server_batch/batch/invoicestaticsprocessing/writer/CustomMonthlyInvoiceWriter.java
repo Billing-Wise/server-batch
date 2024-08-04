@@ -30,30 +30,30 @@ public class CustomMonthlyInvoiceWriter implements ItemWriter<Invoice>, StepExec
     @Override
     public void write(Chunk<? extends Invoice> chunk) {
         for (Invoice invoice : chunk) {
+            // 클라이언트별 통계 객체 생성 또는 가져오기
             Long invoiceClientId = invoice.getContract().getMember().getClient().getId();
             MonthlyInvoiceStatisticsListener clientStatistics = clientStatisticsMap.computeIfAbsent(invoiceClientId, k -> new MonthlyInvoiceStatisticsListener(jdbcTemplate));
             clientStatistics.setClientId(invoiceClientId);
 
-            log.info("월간 통계 invoice 데이터 ID: {}", invoice.getId());
 
+            // 대기 상태의 청구서는 처리하지 않음
             if (invoice.getPaymentStatus().getId() == PAYMENT_STATUS_PENDING) {
-                log.info("아직 결제 대기 중인 invoice 데이터, skipping: {}", invoice.getId());
                 continue;
             }
 
+            // 총 청구 금액 추가
             clientStatistics.addInvoice(invoice.getChargeAmount());
-            log.info("총 청구액에 더할 invoice 데이터 금액: {}", invoice.getChargeAmount());
 
+            // 결제 상태에 따라 수금액 또는 미수금액 추가
             if (invoice.getPaymentStatus().getId() == PAYMENT_STATUS_COMPLETED) {
                 clientStatistics.addCollected(invoice.getChargeAmount());
-                log.info("총 수납금액에 더할 invoice 데이터 금액: {}", invoice.getChargeAmount());
             } else if (invoice.getPaymentStatus().getId() == PAYMENT_STATUS_UNPAID) {
                 clientStatistics.addOutstanding(invoice.getChargeAmount());
-                log.info("총 미납금액에 더할 invoice 데이터 금액: {}", invoice.getChargeAmount());
             }
         }
     }
 
+    // 통계 저장 및 초기화
     private void saveAndResetStatistics() {
         clientStatisticsMap.forEach((clientId, statistics) -> {
             if (statistics.getTotalInvoicedMoney() > 0) {
@@ -66,14 +66,12 @@ public class CustomMonthlyInvoiceWriter implements ItemWriter<Invoice>, StepExec
 
     @Override
     public void beforeStep(StepExecution stepExecution) {
-        log.info("beforeStep 호출");
         clientStatisticsMap.clear();
         invoiceStatisticsListener.resetStatistics();
     }
 
     @Override
     public ExitStatus afterStep(StepExecution stepExecution) {
-        log.info("afterStep 호출");
         saveAndResetStatistics();
         return ExitStatus.COMPLETED;
     }

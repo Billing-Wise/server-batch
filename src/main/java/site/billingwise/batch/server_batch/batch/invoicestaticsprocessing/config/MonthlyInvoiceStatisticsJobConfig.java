@@ -20,6 +20,7 @@ import site.billingwise.batch.server_batch.batch.invoicestaticsprocessing.writer
 import site.billingwise.batch.server_batch.batch.listner.CustomRetryListener;
 import site.billingwise.batch.server_batch.batch.listner.CustomSkipListener;
 import site.billingwise.batch.server_batch.batch.listner.JobCompletionCheckListener;
+import site.billingwise.batch.server_batch.batch.listner.StepCompletionCheckListener;
 import site.billingwise.batch.server_batch.batch.listner.statistic.MonthlyInvoiceStatisticsListener;
 import site.billingwise.batch.server_batch.batch.policy.backoff.CustomBackOffPolicy;
 import site.billingwise.batch.server_batch.batch.policy.skip.CustomSkipPolicy;
@@ -41,6 +42,7 @@ public class MonthlyInvoiceStatisticsJobConfig {
     private final CustomRetryListener retryListener;
     private final CustomSkipListener customSkipListener;
     private final CustomSkipPolicy customSkipPolicy;
+    private final StepCompletionCheckListener stepCompletionCheckListener;
 
 
     @Bean
@@ -53,8 +55,8 @@ public class MonthlyInvoiceStatisticsJobConfig {
 
     @Bean
     Step monthlyInvoiceStatisticsStep(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
-
-        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 10000L);
+        //backoff 정책 만들기
+        CustomBackOffPolicy customBackOffPolicy = new CustomBackOffPolicy(1000L, 2.0, 4000L);
 
         return new StepBuilder("monthlyInvoiceStatisticsStep", jobRepository)
                 .<Invoice, Invoice>chunk(CHUNK_SIZE, transactionManager)
@@ -63,12 +65,13 @@ public class MonthlyInvoiceStatisticsJobConfig {
                 .listener(monthlyInvoiceStatisticsListener)
                 .faultTolerant()
                 .retry(Exception.class)
-                .retryLimit(5)
+                .retryLimit(2)
                 .backOffPolicy(customBackOffPolicy)
                 .listener(retryListener)
                 .skip(Exception.class)
                 .skipPolicy(customSkipPolicy)
                 .listener(customSkipListener)
+                .listener(stepCompletionCheckListener)
                 .build();
 
     }

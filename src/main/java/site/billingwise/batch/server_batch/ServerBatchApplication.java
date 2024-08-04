@@ -14,5 +14,4 @@ public class ServerBatchApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(ServerBatchApplication.class, args);
 	}
-
 }
