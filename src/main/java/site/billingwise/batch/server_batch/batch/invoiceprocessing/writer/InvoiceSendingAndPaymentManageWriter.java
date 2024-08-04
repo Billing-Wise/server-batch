@@ -66,8 +66,8 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
                 updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_COMPLETED);
                 insertPaymentRecord(invoice, consentAccount);
                 emailService.sendPaymentSuccessMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount);
-//                smsService.sendSuccessBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
-                // 단건일 경우( 계약 종료로 변경 )
+                smsService.sendSuccessBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue());
+//                 단건일 경우( 계약 종료로 변경 )
                 if(!checkSubscription) {
                     updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);
                 }
@@ -77,8 +77,8 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
                 log.info("결제 실패한 invoice ID: {}", invoice.getId());
                 updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_UNPAID);
                 emailService.sendPaymentFailMailCode(invoice.getContract().getMember().getEmail(), invoice, consentAccount, paymentAttemptMessage);
-//                smsService.sendFailBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(),
-//                        invoice.getChargeAmount().intValue(), paymentAttemptMessage);
+                smsService.sendFailBilling(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(),
+                        invoice.getChargeAmount().intValue(), paymentAttemptMessage);
                 // 단건일 경우( 계약 종료로 변경 )
                 if(!checkSubscription) {
                     updateNotSubscriptionContractStatus(contract_id, CONTRACT_STATUS_TERMINATED);
@@ -90,7 +90,7 @@ public class InvoiceSendingAndPaymentManageWriter implements ItemWriter<Invoice>
             log.info("납부자 결제  invoice ID: {}", invoice.getId());
             emailService.sendInvoiceMail(invoice.getContract().getMember().getEmail(), invoice);
             updatePaymentStatus(invoice.getId(), PAYMENT_STATUS_PENDING);
-//            smsService.sendInvoice(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue(),invoice.getId());
+            smsService.sendInvoice(member.getPhone(), member.getConsentAccount().getOwner(), member.getConsentAccount().getBank(), invoice.getChargeAmount().intValue(),invoice.getId());
 
             // 단건일 경우( 계약 종료로 변경 )
             if(!checkSubscription) {

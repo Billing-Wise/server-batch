@@ -8,8 +8,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
-import site.billingwise.batch.server_batch.batch.service.EmailService;
-import site.billingwise.batch.server_batch.batch.service.SmsService;
 import site.billingwise.batch.server_batch.domain.contract.Contract;
 import site.billingwise.batch.server_batch.domain.contract.PaymentType;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
@@ -65,12 +63,12 @@ public class InvoiceSendingAndPaymentManageWriterTest {
     }
 
     @Test
-    @DisplayName("결제 실패 시 수정 시각 업데이트")
-    public void testUpdateFailPaymentStatus() throws Exception {
-        Method method = InvoiceSendingAndPaymentManageWriter.class.getDeclaredMethod("updateFailPaymentStatus", long.class);
+    @DisplayName("결제 실패 시 상태 업데이트")
+    public void testUpdatePaymentStatusOnFailure() throws Exception {
+        Method method = InvoiceSendingAndPaymentManageWriter.class.getDeclaredMethod("updatePaymentStatus", long.class, long.class);
         method.setAccessible(true);
-        method.invoke(writer, 1L);
-        verify(jdbcTemplate).update("update invoice set updated_at = now() where invoice_id = ?", 1L);
+        method.invoke(writer, 1L, PAYMENT_STATUS_UNPAID);
+        verify(jdbcTemplate).update("update invoice set payment_status_id = ?, updated_at = now() where invoice_id = ?", PAYMENT_STATUS_UNPAID, 1L);
     }
 
     @Test
