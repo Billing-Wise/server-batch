@@ -2,50 +2,77 @@ package site.billingwise.batch.server_batch.batch.invoicestaticsprocessing.write
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.batch.core.ExitStatus;
+import org.springframework.batch.core.StepExecution;
+import org.springframework.batch.core.StepExecutionListener;
 import org.springframework.batch.item.Chunk;
 import org.springframework.batch.item.ItemWriter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import site.billingwise.batch.server_batch.batch.listner.statistic.MonthlyInvoiceStatisticsListener;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static site.billingwise.batch.server_batch.batch.util.StatusConstants.*;
+
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class CustomMonthlyInvoiceWriter implements ItemWriter<Invoice> {
+public class CustomMonthlyInvoiceWriter implements ItemWriter<Invoice>, StepExecutionListener {
 
     private final MonthlyInvoiceStatisticsListener invoiceStatisticsListener;
+    private final JdbcTemplate jdbcTemplate;
+    private final Map<Long, MonthlyInvoiceStatisticsListener> clientStatisticsMap = new HashMap<>();
 
     @Override
-    public void write(Chunk<? extends Invoice> chunk)  {
+    public void write(Chunk<? extends Invoice> chunk) {
         for (Invoice invoice : chunk) {
+            // 클라이언트별 통계 객체 생성 또는 가져오기
+            Long invoiceClientId = invoice.getContract().getMember().getClient().getId();
+            MonthlyInvoiceStatisticsListener clientStatistics = clientStatisticsMap.computeIfAbsent(invoiceClientId, k -> new MonthlyInvoiceStatisticsListener(jdbcTemplate));
+            clientStatistics.setClientId(invoiceClientId);
 
-            if (invoiceStatisticsListener.getClientId() == null) {
-                invoiceStatisticsListener.setClientId(invoice.getContract().getMember().getClient().getId());
-            }
 
-            log.info("월간 통계 invoice 데이터 ID: {}", invoice.getId());
-
-            if (invoice.getIsDeleted()) {
-                log.info("삭제된 invoice 데이터, skipping: {}", invoice.getId());
-                continue;
-            }
+            // 대기 상태의 청구서는 처리하지 않음
             if (invoice.getPaymentStatus().getId() == PAYMENT_STATUS_PENDING) {
-                log.info("아직 결제 대기 중인 invoice 데이터, skipping: {}", invoice.getId());
                 continue;
             }
 
-            invoiceStatisticsListener.addInvoice(invoice.getChargeAmount());
-            log.info("총 청구액에 더할 invoice 데이터 금액: {}", invoice.getChargeAmount());
+            // 총 청구 금액 추가
+            clientStatistics.addInvoice(invoice.getChargeAmount());
 
+            // 결제 상태에 따라 수금액 또는 미수금액 추가
             if (invoice.getPaymentStatus().getId() == PAYMENT_STATUS_COMPLETED) {
-                invoiceStatisticsListener.addCollected(invoice.getChargeAmount());
-                log.info("총 수납금액에 더할 invoice 데이터 금액: {}", invoice.getChargeAmount());
+                clientStatistics.addCollected(invoice.getChargeAmount());
             } else if (invoice.getPaymentStatus().getId() == PAYMENT_STATUS_UNPAID) {
-                invoiceStatisticsListener.addOutstanding(invoice.getChargeAmount());
-                log.info("총 미납금액에 더할 invoice 데이터 금액: {}", invoice.getChargeAmount());
+                clientStatistics.addOutstanding(invoice.getChargeAmount());
             }
         }
+    }
+
+    // 통계 저장 및 초기화
+    private void saveAndResetStatistics() {
+        clientStatisticsMap.forEach((clientId, statistics) -> {
+            if (statistics.getTotalInvoicedMoney() > 0) {
+                statistics.saveStatistics();
+            }
+            statistics.resetStatistics();
+        });
+        clientStatisticsMap.clear();
+    }
+
+    @Override
+    public void beforeStep(StepExecution stepExecution) {
+        clientStatisticsMap.clear();
+        invoiceStatisticsListener.resetStatistics();
+    }
+
+    @Override
+    public ExitStatus afterStep(StepExecution stepExecution) {
+        saveAndResetStatistics();
+        return ExitStatus.COMPLETED;
     }
 }

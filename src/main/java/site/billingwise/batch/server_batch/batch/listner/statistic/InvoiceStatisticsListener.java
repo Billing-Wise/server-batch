@@ -21,46 +21,51 @@ public abstract class InvoiceStatisticsListener implements StepExecutionListener
 
     private final JdbcTemplate jdbcTemplate;
 
-    private long totalInvoicedMoney ;
+    private long totalInvoicedMoney;
     private long totalCollectedMoney;
     private long totalOutstanding;
     private Long clientId;
 
+    private boolean saveInvoked = false;
+
     @Override
     public ExitStatus afterStep(StepExecution stepExecution) {
-        log.info("afterStep 호출");
+        // Step 종료 후 통계가 아직 저장되지 않았다면 저장
+        if (!saveInvoked && totalInvoicedMoney > 0) {
+            saveStatistics();
+        }
+        return ExitStatus.COMPLETED;
+    }
+
+    public void saveStatistics() {
+        saveInvoked = true;
         LocalDateTime today = LocalDateTime.now();
         LocalDateTime startOfPeriod;
         int periodNumber;
 
-        // 통계 타입에 따라 시작 날짜와 기간 번호를 설정하기
+        // 월간 또는 주간 통계에 따라 시작일 및 기간 번호 설정
         if (getStatisticsType() == StatusConstants.STATISTICS_TYPE_MONTHLY) {
             startOfPeriod = today.minusMonths(1).withDayOfMonth(1);
-            periodNumber = 0; // 월간일 경우에는 주간 데이터 0
+            periodNumber = 0;
         } else {
             startOfPeriod = today.minusWeeks(1).with(DayOfWeek.MONDAY);
             periodNumber = startOfPeriod.get(WeekFields.of(Locale.getDefault()).weekOfWeekBasedYear());
         }
 
-
-        updateinvoiceStatics(jdbcTemplate,totalInvoicedMoney, totalCollectedMoney, totalOutstanding, startOfPeriod, periodNumber);
-        return ExitStatus.COMPLETED;
+        updateInvoiceStatics(jdbcTemplate, totalInvoicedMoney, totalCollectedMoney, totalOutstanding, startOfPeriod, periodNumber);
     }
 
-    private void updateinvoiceStatics(JdbcTemplate jdbcTemplate , long totalInvoicedMoney, long totalCollectedMoney, long totalOutstanding, LocalDateTime startOfPeriod, int periodNumber) {
-        // 데이터 베이스에 insert하는 로직
-        // 참고날짜, 총 청구액, 총 수금액, 총 미납액, 타입상태(주간 or 월간), 년, 월, 주,
-        log.info("업데이트 invoice statistics 테이블: totalInvoicedMoney={}, totalCollectedMoney={}, totalOutstanding={}, startOfLastWeek={}, weekNumber={}",
-                totalInvoicedMoney, totalCollectedMoney, totalOutstanding, startOfPeriod, periodNumber);
+    // 청구서 통계 데이터베이스 업데이트
+    private void updateInvoiceStatics(JdbcTemplate jdbcTemplate, long totalInvoicedMoney, long totalCollectedMoney, long totalOutstanding, LocalDateTime startOfPeriod, int periodNumber) {
 
-        // 데이터 없을 시 에러 방지 ( 제약 조건 )
         if (clientId == null) {
-            clientId = -1L;
+            log.info("invoice 테이블에 invoice 데이터 없음");
+            return;
         }
 
         String sql = "insert into invoice_statistics (reference_date, total_invoiced, total_collected, outstanding, type_id, year, month, week, client_id, is_deleted, created_at, updated_at ) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, false, now(), now())";
-        jdbcTemplate.update(sql,  startOfPeriod,
+        jdbcTemplate.update(sql, startOfPeriod,
                 totalInvoicedMoney,
                 totalCollectedMoney,
                 totalOutstanding,
@@ -70,29 +75,35 @@ public abstract class InvoiceStatisticsListener implements StepExecutionListener
                 periodNumber,
                 clientId
         );
-
     }
 
     @Override
     public void beforeStep(StepExecution stepExecution) {
+        resetStatistics();
+    }
+
+    // 통계 초기화
+    public void resetStatistics() {
         totalInvoicedMoney = 0;
         totalCollectedMoney = 0;
         totalOutstanding = 0;
         clientId = null;
+        saveInvoked = false;
     }
 
-    public void addInvoice(long Invoice) {
-        totalInvoicedMoney += Invoice;
+    // 청구 금액 추가
+    public void addInvoice(long invoice) {
+        totalInvoicedMoney += invoice;
     }
-
-    public void addCollected(long Collected) {
-        totalCollectedMoney += Collected;
+    // 수금액 추가
+    public void addCollected(long collected) {
+        totalCollectedMoney += collected;
     }
-
+    // 미수금액 추가
     public void addOutstanding(long outstanding) {
         totalOutstanding += outstanding;
     }
-
+    // 클라이언트 ID 설정
     public void setClientId(Long id) {
         this.clientId = id;
     }
@@ -101,4 +112,7 @@ public abstract class InvoiceStatisticsListener implements StepExecutionListener
         return clientId;
     }
 
+    public long getTotalInvoicedMoney() {
+        return totalInvoicedMoney;
+    }
 }

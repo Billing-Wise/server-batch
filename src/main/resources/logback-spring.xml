@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Console appender to output JSON logs to the console -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <jsonGenerator>
+                <prettyPrint>true</prettyPrint>
+            </jsonGenerator>
+        </encoder>
+    </appender>
+
+    <!-- File appender to save JSON logs to a file -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/batch-logs.json</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/application-%d{yyyy-MM-dd}.%i.log</fileNamePattern> <!-- 일별 로그 파일 패턴 -->
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>10MB</maxFileSize> <!-- 로그 파일 최대 크기 -->
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory> <!-- 최대 보관 기간 (일) -->
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <jsonGenerator>
+                <prettyPrint>true</prettyPrint>
+            </jsonGenerator>
+        </encoder>
+    </appender>
+
+    <!-- Slack appender for warning and error logs -->
+    <appender name="SLACK" class="com.github.maricn.logback.SlackAppender">
+        <webhookUri>https://hooks.slack.com/services/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</webhookUri>
+        <username>billingwise-batch-server</username>
+        <channel>#5팀</channel>
+        <layout class="ch.qos.logback.classic.PatternLayout">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+        </layout>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>WARN</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+
+    </appender>
+
+    <!-- Define a logger for your batch package -->
+    <logger name="site.billingwise.batch" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+        <appender-ref ref="SLACK"/>
+    </logger>
+
+    <!-- Root Logger Configuration -->
+    <root level="INFO"> <!-- 콘솔과 파일로만 INFO 이상 출력 -->
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </root>
+
+    <!-- Separate Logger for Slack -->
+    <logger name="com.example.yourpackage" level="WARN" additivity="false"> <!-- 특정 패키지에서 발생하는 WARN 이상 로그만 Slack으로 전송 -->
+        <appender-ref ref="SLACK" />
+    </logger>
+
+
+</configuration>

@@ -17,4 +17,9 @@ public class MonthlyInvoiceStatisticsListener extends InvoiceStatisticsListener 
     protected Long getStatisticsType() {
         return StatusConstants.STATISTICS_TYPE_MONTHLY;
     }
+
+
+    public void setClientId(Long id) {
+        super.setClientId(id);
+    }
 }

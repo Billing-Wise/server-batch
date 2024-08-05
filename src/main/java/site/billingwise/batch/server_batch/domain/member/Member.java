@@ -15,9 +15,6 @@ import java.util.List;
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Table(uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"client_id", "email"})
-})
 public class Member extends BaseEntity {
 
     @Id
@@ -32,7 +29,7 @@ public class Member extends BaseEntity {
     @Column(length = 50, nullable = false)
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String description;
 
     @Column(nullable = false)

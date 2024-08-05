@@ -8,8 +8,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.jdbc.core.JdbcTemplate;
-import site.billingwise.batch.server_batch.batch.service.EmailService;
-import site.billingwise.batch.server_batch.batch.service.SmsService;
 import site.billingwise.batch.server_batch.domain.contract.Contract;
 import site.billingwise.batch.server_batch.domain.contract.PaymentType;
 import site.billingwise.batch.server_batch.domain.invoice.Invoice;
@@ -20,6 +18,7 @@ import site.billingwise.batch.server_batch.feign.PayClientResponse;
 
 import java.lang.reflect.Method;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static site.billingwise.batch.server_batch.batch.util.StatusConstants.*;
@@ -29,12 +28,6 @@ public class InvoiceSendingAndPaymentManageWriterTest {
 
     @Mock
     private JdbcTemplate jdbcTemplate;
-
-    @Mock
-    private EmailService emailService;
-
-    @Mock
-    private SmsService smsService;
 
     @Mock
     private PayClient payClient;
@@ -60,6 +53,7 @@ public class InvoiceSendingAndPaymentManageWriterTest {
                 .id(PAYMENT_TYPE_AUTOMATIC_TRANSFER)
                 .build();
 
+
         invoice = Invoice.builder()
                 .id(1L)
                 .isDeleted(false)
@@ -69,12 +63,12 @@ public class InvoiceSendingAndPaymentManageWriterTest {
     }
 
     @Test
-    @DisplayName("결제 실패 시 수정 시각 업데이트")
-    public void testUpdateFailPaymentStatus() throws Exception {
-        Method method = InvoiceSendingAndPaymentManageWriter.class.getDeclaredMethod("updateFailPaymentStatus", long.class);
+    @DisplayName("결제 실패 시 상태 업데이트")
+    public void testUpdatePaymentStatusOnFailure() throws Exception {
+        Method method = InvoiceSendingAndPaymentManageWriter.class.getDeclaredMethod("updatePaymentStatus", long.class, long.class);
         method.setAccessible(true);
-        method.invoke(writer, 1L);
-        verify(jdbcTemplate).update("update invoice set updated_at = now() where invoice_id = ?", 1L);
+        method.invoke(writer, 1L, PAYMENT_STATUS_UNPAID);
+        verify(jdbcTemplate).update("update invoice set payment_status_id = ?, updated_at = now() where invoice_id = ?", PAYMENT_STATUS_UNPAID, 1L);
     }
 
     @Test
@@ -119,17 +113,21 @@ public class InvoiceSendingAndPaymentManageWriterTest {
     @Test
     @DisplayName("자동 결제 성공 테스트")
     public void testProcessAutoPayment() throws Exception {
-        ConsentAccount consentAccount = ConsentAccount.builder()
-                .number("12345")
-                .build();
+        PayClientResponse successResponse = PayClientResponse.builder().statusCode(200).build();
+        when(payClient.pay("account", "12345123552")).thenReturn(successResponse);
 
-        when(payClient.pay("account", "12345")).thenReturn(PayClientResponse.builder().statusCode(200).build());
+        ConsentAccount consentAccount = ConsentAccount.builder()
+                .number("12345123552")
+                .bank("bank")
+                .owner("변현진")
+                .build();
 
         Method method = InvoiceSendingAndPaymentManageWriter.class.getDeclaredMethod("processAutoPayment", Invoice.class, ConsentAccount.class);
         method.setAccessible(true);
-        boolean result = (boolean) method.invoke(writer, invoice, consentAccount);
+        PayClientResponse result = (PayClientResponse) method.invoke(writer, invoice, consentAccount);
 
-        assert result;
-        verify(payClient).pay("account", "12345");
+        assertEquals(200, result.getStatusCode());
+        verify(payClient).pay("account", "12345123552");
     }
+
 }

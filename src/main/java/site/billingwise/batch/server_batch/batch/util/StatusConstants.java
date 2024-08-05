@@ -18,7 +18,7 @@ public class StatusConstants {
 
     // 결제 수단
     public static final long PAYMENT_TYPE_PAYER_PAYMENT = 1L;   // 납부자 결제
-    public static final long PAYMENT_TYPE_AUTOMATIC_TRANSFER = 2L;   // 자동 이체
+    public static final long PAYMENT_TYPE_AUTOMATIC_TRANSFER = 2L;   // 실시간 CMS
 
 
     // 통계 타입
