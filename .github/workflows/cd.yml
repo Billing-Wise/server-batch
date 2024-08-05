@@ -36,8 +36,15 @@ jobs:
       - name: Grant execute permission to Gradle Wrapper
         run: chmod +x ./gradlew
 
+      - name: Cache Jib layers
+        uses: actions/cache@v3
+        with:
+          path: ./server-batch/build/jib-cache
+          key: ${{ runner.os }}-jib-${{ github.job }}-${{ hashFiles('**/build.gradle') }}
+          restore-keys: ${{ runner.os }}-jib-${{ github.job }}
+
       - name: Build and push image to Amazon ECR
-        run: ./gradlew clean jib -x test
+        run: ./gradlew jib -x test
 
       - name: Deploy to AWS ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v1
