@@ -39,8 +39,8 @@ jobs:
       - name: Cache Jib layers
         uses: actions/cache@v3
         with:
-          path: ./server-batch/build/jib-cache
-          key: ${{ runner.os }}-jib-${{ github.job }}-${{ hashFiles('**/build.gradle') }}
+          path: ./build/jib-cache
+          key: ${{ runner.os }}-jib-${{ github.job }}-${{ hashFiles('build.gradle') }}
           restore-keys: ${{ runner.os }}-jib-${{ github.job }}
 
       - name: Build and push image to Amazon ECR
